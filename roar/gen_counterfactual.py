@@ -10,7 +10,7 @@ import gurobipy as grb
 class ROAR(object):
     """ Class for generate counterfactual samples for framework: AR """
 
-    def __init__(self, data, model_trained, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', padding=False):
+    def __init__(self, data, model_trained, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=100, padding=False):
         """ Parameters
 
         Args:
@@ -26,6 +26,7 @@ class ROAR(object):
         self.dist_type = dist_type
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
+        self.max_iter = max_iter
 
     def objective_func(self, coef, x, x_0):
         """ Loss function - mse or log loss
@@ -60,6 +61,7 @@ class ROAR(object):
         model.params.NonConvex = 2
         model.setParam('OutputFlag', False)
         model.params.threads = 64
+        model.params.IterationLimit = 1e6
 
         sigma = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="sigma")
         sigma_norm = model.addMVar(1, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="sigma_norm")
@@ -87,7 +89,7 @@ class ROAR(object):
         return sigma_hat
 
 
-    def fit_instance(self, x_0, max_iter):
+    def fit_instance(self, x_0):
         x_t = torch.from_numpy(x_0.copy())
         x_t.requires_grad = True
         x_0 = torch.from_numpy(x_0)
@@ -96,7 +98,7 @@ class ROAR(object):
         ord = None if self.dist_type=='l2' else 1
         g = 0
 
-        for iter in range(max_iter):
+        for iter in range(self.max_iter):
             sigma_hat = self.find_optimal_sigma(coef, x_t.detach().numpy())
             coef_ = coef + torch.from_numpy(sigma_hat)
             x_t.retain_grad()
@@ -121,6 +123,6 @@ class ROAR(object):
         counterfactual_samples = np.zeros((l, self.dim))
 
         for i in range(l):
-            counterfactual_samples[i] = self.fit_instance(data[i], 10)
+            counterfactual_samples[i] = self.fit_instance(data[i])
 
         return counterfactual_samples

@@ -63,7 +63,7 @@ def main(args):
     # Extract csv file
     if not os.path.exists('result/real_data'):
         os.makedirs('result/real_data')
-    df.to_csv(f'result/real_data/{args.save_dir}.csv', index=False)
+    df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}.csv', index=False)
 
     print("german_validity: ", german_validity)
     print("sba_validity: ", sba_validity)

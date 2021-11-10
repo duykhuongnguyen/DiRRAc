@@ -43,8 +43,6 @@ class DRRA(object):
         except:
             x_opt = x.copy()
 
-        if not out:
-            raise ValueError("Problem can not be solved")
         return x_opt
 
     def fit_data(self, data, model='nm'):

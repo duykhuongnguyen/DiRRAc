@@ -60,7 +60,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # ar_module = LinearAR(X_train, model_trained.coef_, model_trained.intercept_)
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained, 0.1, sigma_max=0.2, alpha=1e-3)
+    roar = ROAR(X_recourse, model_trained, 0.1, sigma_max=0.2, alpha=1e-2)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0]}
 

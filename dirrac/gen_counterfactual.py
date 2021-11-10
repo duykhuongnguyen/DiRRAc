@@ -1,3 +1,5 @@
+from tqdm import tqdm
+
 import numpy as np
 
 from dirrac.optim.opt import Optimization
@@ -43,7 +45,7 @@ class DRRA(object):
 
     def fit_data(self, data, model='nm'):
         counterfactual_samples = np.zeros((len(data), self.dim))
-        for i in range(len(data)):
+        for i in tqdm(range(len(data))):
             counterfactual_samples[i] = self.fit_instance(data[i], model=model)
 
         return counterfactual_samples

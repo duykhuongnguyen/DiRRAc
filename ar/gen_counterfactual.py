@@ -1,3 +1,5 @@
+from tqdm import tqdm
+
 import numpy as np
 
 import recourse as rs
@@ -57,7 +59,7 @@ class LinearAR(object):
         l = len(data)
         counterfactual_samples = np.zeros((l, self.n_variables))
 
-        for i in range(l):
+        for i in tqdm(range(l)):
             counterfactual_samples[i] = self.fit_instance(data[i])
 
         return counterfactual_samples

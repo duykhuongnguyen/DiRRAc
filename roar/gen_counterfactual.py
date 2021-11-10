@@ -1,6 +1,6 @@
-import autograd.numpy as np
-from autograd import grad
-from autograd import value_and_grad
+from tqdm import tqdm
+
+import numpy as np
 
 import torch
 
@@ -107,6 +107,9 @@ class ROAR(object):
             g = x_t.grad
             x_t = x_t - self.alpha * g
 
+            if torch.linalg.norm(self.alpha * g).item() < 1e-3:
+                break
+
         return x_t.detach().numpy()
 
 
@@ -122,7 +125,7 @@ class ROAR(object):
         l = len(data)
         counterfactual_samples = np.zeros((l, self.dim))
 
-        for i in range(l):
+        for i in tqdm(range(l)):
             counterfactual_samples[i] = self.fit_instance(data[i])
 
         return counterfactual_samples

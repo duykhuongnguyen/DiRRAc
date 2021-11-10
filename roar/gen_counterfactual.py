@@ -10,7 +10,7 @@ import gurobipy as grb
 class ROAR(object):
     """ Class for generate counterfactual samples for framework: AR """
 
-    def __init__(self, data, model_trained, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=100, padding=False):
+    def __init__(self, data, model_trained, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=10, padding=False):
         """ Parameters
 
         Args:

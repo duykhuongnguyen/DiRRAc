@@ -38,7 +38,11 @@ class DRRA(object):
             x_opt: recourse of x
         """
         out = self.models[model].recourse_action(x, 10)
-        f_opt, x_opt = out
+        try:
+            f_opt, x_opt = out
+        except:
+            x_opt = x.copy()
+
         if not out:
             raise ValueError("Problem can not be solved")
         return x_opt

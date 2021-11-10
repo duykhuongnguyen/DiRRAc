@@ -61,7 +61,7 @@ class ROAR(object):
         model.params.NonConvex = 2
         model.setParam('OutputFlag', False)
         model.params.threads = 64
-        model.params.IterationLimit = 1e6
+        model.params.IterationLimit = 1e3
 
         sigma = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="sigma")
         sigma_norm = model.addMVar(1, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="sigma_norm")

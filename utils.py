@@ -49,18 +49,18 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # Initialize modules
     beta = 0
-    delta = 0.5
+    delta = 0.2
     k = 1
     p = np.array([1])
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
     theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 10)
-    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, real_data=real_data, padding=padding)
+    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
 
     # ar_module = LinearAR(X_train, model_trained.coef_, model_trained.intercept_)
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained, 0.1, sigma_max=0.2, alpha=1e-2)
+    roar = ROAR(X_recourse, model_trained, 0.1, sigma_max=0.2, alpha=1e-2, dist_type='l1')
 
     validity = {'AR': [0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0]}
 

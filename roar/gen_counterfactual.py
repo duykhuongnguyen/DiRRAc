@@ -10,7 +10,7 @@ import gurobipy as grb
 class ROAR(object):
     """ Class for generate counterfactual samples for framework: AR """
 
-    def __init__(self, data, model_trained, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=20, padding=False):
+    def __init__(self, data, coef, intercept, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=20, padding=False):
         """ Parameters
 
         Args:
@@ -19,7 +19,7 @@ class ROAR(object):
             padding: True if we padding 1 at the end of instances
         """
         self.data = np.concatenate((data, np.ones(len(data)).reshape(-1, 1)), axis=1)
-        self.coef = np.concatenate((model_trained.coef_.squeeze(), model_trained.intercept_))
+        self.coef = np.concatenate((coef, intercept))
         self.lmbda = lmbda
         self.alpha = alpha
         self.dim = self.data.shape[1]

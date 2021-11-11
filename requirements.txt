@@ -31,4 +31,5 @@ tqdm==4.44.1
 traitlets==4.3.3
 wcwidth==0.1.9
 torch==1.7.0
+lime
 actionable-recourse

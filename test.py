@@ -13,3 +13,4 @@ from utils import train_non_linear, train_real_world_data
 
 # validity = train_real_world_data('german', 1)
 validity = train_non_linear('german', 10)
+print(validity)

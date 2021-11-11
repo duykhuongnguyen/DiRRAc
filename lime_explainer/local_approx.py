@@ -13,12 +13,11 @@ class LocalApprox(object):
 
     def extract_weights(self, x_0):
         exp = self.explainer.explain_instance(x_0, self.predict_fn, top_labels=1)
-        label = exp.intercept.keys()
         coefs = exp.local_exp[0]
         intercept = exp.intercept[0]
         coefs = sorted(coefs, key=lambda x: x[0])
 
         w = np.array([e[1] for e in coefs])
-        b = intercept - 0.5
-
+        b = intercept - max(self.predict_fn(x_0.reshape(1, -1)).squeeze())
+        
         return w, np.array(b).reshape(1,)

@@ -188,6 +188,7 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
           # get the predicted labels (only test set)
           # X_test = pd.concat([X_train, X_test]) # ONLY ACTIVATE THIS WHEN TEST SET IS NOT LARGE ENOUGH TO GEN' MODEL RECON DATASET
           X_test_pred_labels = model_trained.predict(X_test)
+          X_test_pred_labels0 = X_test[X_test_pred_labels == 0]
           dim = X_test.shape[1]
           if dataset_string != 'synthetic':
             model_trained.coef_ = theta_hat
@@ -226,9 +227,8 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
 
           counterfactual_samples = np.zeros((len(iterate_over_data_dict), dim))
           count = 0
-          for factual_sample_index, factual_sample in iterate_over_data_dict.items():
+          for i, (factual_sample_index, factual_sample) in enumerate(iterate_over_data_dict.items()):
             factual_sample['y'] = bool(factual_sample['y'])
-
             # print(
             #   '\t\t\t\t'
             #   f'Generating explanation for\t'
@@ -251,7 +251,8 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
                 )
                 counterfactual_samples[count] = explanation_object['counterfactual']
             except:
-                counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
+                # counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
+                counterfactual_samples[count] = X_test_pred_labels0.to_numpy()[i]
             count += 1
 
           return counterfactual_samples

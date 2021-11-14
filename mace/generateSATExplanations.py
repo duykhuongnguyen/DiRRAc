@@ -538,7 +538,7 @@ def findClosestCounterfactualSample(model_trained, model_symbols, dataset_obj, f
   factual_pysmt_sample = getPySMTSampleFromDictSample(factual_sample, dataset_obj)
 
   norm_lower_bound = 0
-  norm_upper_bound = 1 if dataset_obj.dataset_name != 'synthetic' else 10
+  norm_upper_bound = 5 if dataset_obj.dataset_name != 'synthetic' else 10
   curr_norm_threshold = getCenterNormThresholdInRange(norm_lower_bound, norm_upper_bound)
 
   # Get and merge all constraints

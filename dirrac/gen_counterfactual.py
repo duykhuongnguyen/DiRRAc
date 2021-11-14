@@ -42,7 +42,7 @@ class DRRA(object):
         try:
             f_opt, x_opt = out
         except:
-            x_opt = np.zeros(x.shape)
+            x_opt = x.copy()
 
         return x_opt
 

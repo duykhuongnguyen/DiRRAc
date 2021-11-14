@@ -50,7 +50,7 @@ def cal_validity(pred):
 def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True):
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
-    
+
     X_recourse = X_test[model_trained.predict(X_test) == 0][:num_samples]
 
     # Initialize modules
@@ -62,7 +62,8 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     lmbda = 0.7
     zeta = 1
     theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 10)
-    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
+    num_discrete = {'german': 4, 'sba': 2, 'student': 4}
+    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
     roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.2, alpha=1e-2, dist_type='l1')
@@ -110,26 +111,27 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
 
     # Local approximation
     local_approx = LocalApprox(X_train, mlp.predict_proba)
-    all_coef = np.zeros((100, X_train.shape[1] + 1))
+    all_coef = np.zeros((10, X_train.shape[1] + 1))
     for i in range(10):
-        coef, intercept = local_approx.extract_weights(X_recourse[1])
+        coef, intercept = local_approx.extract_weights(X_recourse[0])
         all_coef[i] = np.concatenate((coef, intercept))
     theta = np.zeros((1, X_train.shape[1] + 1))
     sigma = np.zeros((1, X_train.shape[1] + 1, X_train.shape[1] + 1))
     theta[0], sigma[0] = np.mean(all_coef, axis=0), np.cov(all_coef.T)
 
-    # theta, sigma = np.concatenate((coef, intercept)).reshape(1, -1), np.expand_dims(0.01 * np.identity(X_train.shape[1] + 1), axis=0)
+    # theta, sigma = np.concatenate((coef, intercept)).reshape(1, -1), np.expand_dims(0.1 * np.identity(X_train.shape[1] + 1), axis=0)
 
     # Initialize modules
     beta = 0
-    delta = 0.2
+    delta = 0.5
     k = 1
     p = np.array([1])
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
+    num_discrete = {'german': 4, 'sba': 2, 'student': 4}
     # theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 10)
-    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
+    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
     roar = ROAR(X_recourse, coef.squeeze(), intercept, 0.1, sigma_max=0.2, alpha=1e-2, dist_type='l1')
@@ -138,26 +140,28 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
 
     # Generate counterfactual
     print("Generate counterfactual for DiDRAc-NM")
-    counterfactual_drra_nm = drra_module.fit_instance(pad_ones(X_recourse[1], ax=0))
-    print(np.dot(theta, counterfactual_drra_nm) + intercept, mlp.predict_proba(counterfactual_drra_nm[:-1].reshape(1, -1)))
+    counterfactual_drra_nm = drra_module.fit_instance(pad_ones(X_recourse[0], ax=0))
     print("Generate counterfactual for DiDRAc-GM")
-    counterfactual_drra_gm = drra_module.fit_instance(pad_ones(X_recourse[1], ax=0), model='gm')
+    counterfactual_drra_gm = drra_module.fit_instance(pad_ones(X_recourse[0], ax=0), model='gm')
     print("Generate counterfactual for AR")
-    counterfactual_ar = ar_module.fit_instance(X_recourse[1])
+    counterfactual_ar = ar_module.fit_instance(X_recourse[0])
     print("Generate counterfactual for MACE")
     counterfactual_mace = runExperiments([dataset_string], ['lr'], ['one_norm'], ['MACE_eps_1e-5'], 0, 1, 'neg_only', '0', theta[:, :-1], theta[:, -1])
     print("Generate counterfactual for ROAR")
-    counterfactual_roar = roar.fit_instance(roar.data[1])
+    counterfactual_roar = roar.fit_instance(roar.data[0])
 
-    drra_nm, drra_gm, ar, mace, roar = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm, drra_gm, ar, mace, roar = np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10)
     # Train model with shifted data
-    for i in range(100):
+    for i in range(10):
         X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
         clf_shifted = mlp_classifier(X_train_shifted, y_train_shifted)
 
         drra_nm[i] = clf_shifted.predict(counterfactual_drra_nm[:-1].reshape(1, -1))
         drra_gm[i] = clf_shifted.predict(counterfactual_drra_gm[:-1]. reshape(1, -1))
-        ar[i] = clf_shifted.predict(counterfactual_ar.reshape(1, -1))
+        try:
+            ar[i] = clf_shifted.predict(counterfactual_ar.reshape(1, -1))
+        except:
+            ar[i] = 0
         mace[i] = clf_shifted.predict(counterfactual_mace.reshape(1, -1))
         roar[i] = clf_shifted.predict(counterfactual_roar[:-1].reshape(1, -1))
 

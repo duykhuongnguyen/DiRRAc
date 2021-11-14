@@ -10,7 +10,7 @@ import gurobipy as grb
 class Optimization(object):
     """ Class for optimization problem """
 
-    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, padding=False):
+    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, num_discrete=None, padding=False):
         self.delta_add = delta_add
         self.K = K
         self.dim = dim
@@ -24,6 +24,7 @@ class Optimization(object):
         self.gaussian = gaussian
         self.model_type = model_type
         self.real_data = real_data
+        self.num_discrete = num_discrete
         self.padding = padding
 
         self.df_autograd = value_and_grad(self.f_moments_infor) if not gaussian else value_and_grad(self.f_gaussian)
@@ -50,7 +51,7 @@ class Optimization(object):
         if self.dist_type == 'l2':
             obj = x_sub_0 @ x_sub_0
         elif self.dist_type == 'l1':
-            obj = sum(x_sub_0_abs)
+            obj = x_sub_0_abs.sum()
         else:
             raise ValueError('Invalid distance type')
 
@@ -64,14 +65,16 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x <= 1)
+            model.addConstr(x[self.num_discrete:] <= 1)
 
         if self.padding:
              model.addConstr(x[self.dim - 1] == 1)
 
         if self.dist_type == 'l1':
-            model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            model.addConstr(x_sub_0_abs >= 0)
+            for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
+                model.addConstr(w == grb.abs_(v))
+            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
+            # model.addConstr(x_sub_0_abs >= 0)
 
         for k in range(self.K):
             model.addConstr(-self.theta[k].T @ x + self.rho[k] * x_norm <= 0)   # Constrant
@@ -178,14 +181,16 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x <= 1)
+            model.addConstr(x[self.num_discrete:] <= 1)
 
         if self.padding:
             model.addConstr(x[self.dim - 1] == 1)
 
         if self.dist_type == 'l1':
-            model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            model.addConstr(x_sub_0_abs >= 0)
+            for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
+                model.addConstr(w == grb.abs_(v))
+            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
+            # model.addConstr(x_sub_0_abs >= 0)
             model.addConstr(sum(x_sub_0_abs) <= delta)
         else:
             model.addConstr(x_sub_0 @ x_sub_0 <= delta * delta)     # Constrant 1

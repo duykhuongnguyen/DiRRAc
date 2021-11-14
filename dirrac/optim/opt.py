@@ -65,16 +65,16 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x[self.num_discrete:] <= 1)
+            model.addConstr(x <= 1)
 
         if self.padding:
              model.addConstr(x[self.dim - 1] == 1)
 
         if self.dist_type == 'l1':
-            for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
-                model.addConstr(w == grb.abs_(v))
-            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            # model.addConstr(x_sub_0_abs >= 0)
+            # for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
+                # model.addConstr(w == grb.abs_(v))
+            model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
+            model.addConstr(x_sub_0_abs >= 0)
 
         for k in range(self.K):
             model.addConstr(-self.theta[k].T @ x + self.rho[k] * x_norm <= 0)   # Constrant
@@ -181,16 +181,16 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x[self.num_discrete:] <= 1)
+            model.addConstr(x <= 1)
 
         if self.padding:
             model.addConstr(x[self.dim - 1] == 1)
 
         if self.dist_type == 'l1':
-            for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
-                model.addConstr(w == grb.abs_(v))
-            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            # model.addConstr(x_sub_0_abs >= 0)
+            # for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
+            #     model.addConstr(w == grb.abs_(v))
+            model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
+            model.addConstr(x_sub_0_abs >= 0)
             model.addConstr(sum(x_sub_0_abs) <= delta)
         else:
             model.addConstr(x_sub_0 @ x_sub_0 <= delta * delta)     # Constrant 1

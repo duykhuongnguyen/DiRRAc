@@ -50,7 +50,7 @@ def cal_validity(pred):
 def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True):
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
-
+    X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     X_recourse = X_test[model_trained.predict(X_test) == 0][:num_samples]
 
     # Initialize modules
@@ -68,7 +68,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
     roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.2, alpha=1e-2, dist_type='l1')
 
-    validity = {'AR': [0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0]}
+    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
     # Generate counterfactual
     print("Generate counterfactual for DiDRAc-NM")
@@ -82,6 +82,18 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     print("Generate counterfactual for ROAR")
     counterfactual_roar = roar.fit_data(roar.data)
 
+    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    # Train model with original data
+    for i in range(100):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
+        clf = logistic_classifier(X_train, y_train, intercept=True)[0]
+
+        drra_nm_m1[i] = cal_validity(clf.predict(counterfactual_drra_nm[:, :-1]))
+        drra_gm_m1[i] = cal_validity(clf.predict(counterfactual_drra_gm[:, :-1]))
+        ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
+        mace_m1[i] = cal_validity(clf.predict(counterfactual_mace))
+        roar_m1[i] = cal_validity(clf.predict(counterfactual_roar[:, :-1]))
+
     drra_nm, drra_gm, ar, mace, roar = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with shifted data
     for i in range(100):
@@ -94,11 +106,11 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         mace[i] = cal_validity(clf_shifted.predict(counterfactual_mace))
         roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar[:, :-1]))
 
-    validity['AR'] = [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
-    validity['MACE'] = [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
-    validity['DiRRAc-NM'] = [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
-    validity['DiRRAc-GM'] = [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
-    validity['ROAR'] = [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
+    validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
+    validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
+    validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
+    validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
+    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
 
     return validity
 

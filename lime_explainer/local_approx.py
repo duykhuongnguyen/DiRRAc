@@ -18,6 +18,6 @@ class LocalApprox(object):
         coefs = sorted(coefs, key=lambda x: x[0])
 
         w = np.array([e[1] for e in coefs])
-        b = intercept - max(self.predict_fn(x_0.reshape(1, -1)).squeeze())
+        b = intercept - 0.5 # max(self.predict_fn(x_0.reshape(1, -1)).squeeze())
 
         return w, np.array(b).reshape(1,)

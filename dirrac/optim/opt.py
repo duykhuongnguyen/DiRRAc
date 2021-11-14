@@ -237,7 +237,11 @@ class Optimization(object):
 
     def recourse_action(self, x_0, max_iter):
         """ Full process of recource action """
-        delta_min = self.find_delta_min(x_0)
+        try:
+            delta_min = self.find_delta_min(x_0)
+        except:
+            return
+
         delta = delta_min + self.delta_add
         # Check if feasible set is non-empty
         try:

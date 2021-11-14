@@ -41,21 +41,21 @@ def main(args):
     val_m1_tex, val_tex, l1_tex, l2_tex = [], [], [], []
 
     # Generate counterfactual and evaluate
-    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples)
+    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear('german', num_samples=args.num_samples)
     post = post_process(german_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples)
+    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear('sba', num_samples=args.num_samples)
     post = post_process(sba_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples)
+    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear('student', num_samples=args.num_samples)
     post = post_process(student_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
@@ -70,7 +70,7 @@ def main(args):
     # Extract csv file
     if not os.path.exists('result/real_data'):
         os.makedirs('result/real_data')
-    df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_constr.csv', index=False)
+    df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_{args.mode}.csv', index=False)
 
     print("german_validity: ", german_validity)
     print("sba_validity: ", sba_validity)
@@ -79,6 +79,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, default='linear')
     parser.add_argument('--num_samples', type=int, default=10)
     parser.add_argument('--save_dir', type=str, default='validity')
     args = parser.parse_args()

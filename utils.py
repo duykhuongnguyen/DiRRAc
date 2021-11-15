@@ -115,7 +115,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     return validity
 
 
-def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
+def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, num_shuffle=2):
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
@@ -173,9 +173,9 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
         counterfactual_roar = roar.fit_instance(roar.data[i])
         counterfactual_roar_l[i] = counterfactual_roar
 
-        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10)
+        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle)
         # Train model with data
-        for j in range(2):
+        for j in range(num_shuffle):
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
             clf = mlp_classifier(X_train, y_train)
 
@@ -189,9 +189,9 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
             roar_[j] = clf.predict(counterfactual_roar[:-1].reshape(1, -1))
         drra_nm_m1[i], drra_gm_m1[i], ar_m1[i], mace_m1[i], roar_m1[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
 
-        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10)
+        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle)
         # Train model with shifted data
-        for j in range(2):
+        for j in range(num_shuffle):
             X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
             clf_shifted = mlp_classifier(X_train_shifted, y_train_shifted)
 

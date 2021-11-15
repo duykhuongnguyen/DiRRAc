@@ -134,7 +134,7 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
 
     validity = {'AR': [0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0]}
     drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
-    drra_nm, drra_gm, ar, mace, roar = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
+    drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1] + 1))
 
     for i in range(len(X_recourse)):
@@ -203,12 +203,12 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
                 ar_[j] = 0
             mace_[j] = clf_shifted.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = clf_shifted.predict(counterfactual_roar[:-1].reshape(1, -1))
-        drra_nm[i], drra_gm[i], ar[i], mace[i], roar[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
+        drra_nm_m2[i], drra_gm_m2[i], ar_m2[i], mace_m2[i], roar_m2[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
 
-    validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar_l, X_recourse) + cal_cost(counterfactual_ar_l, X_recourse, 'l2')
-    validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace_l, X_recourse) + cal_cost(counterfactual_mace_l, X_recourse, 'l2')
-    validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse, 'l2')
-    validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse, 'l2')
-    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar_l[:, :-1], X_recourse) + cal_cost(counterfactual_roar_l[:, :-1], X_recourse, 'l2')
+    validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar_m2), np.std(ar_m2)] + cal_cost(counterfactual_ar_l, X_recourse) + cal_cost(counterfactual_ar_l, X_recourse, 'l2')
+    validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace_m2), np.std(mace_m2)] + cal_cost(counterfactual_mace_l, X_recourse) + cal_cost(counterfactual_mace_l, X_recourse, 'l2')
+    validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm_m2), np.std(drra_nm_m2)] + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse, 'l2')
+    validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm_m2), np.std(drra_gm_m2)] + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse, 'l2')
+    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar_m2), np.std(roar_m2)] + cal_cost(counterfactual_roar_l[:, :-1], X_recourse) + cal_cost(counterfactual_roar_l[:, :-1], X_recourse, 'l2')
 
     return validity

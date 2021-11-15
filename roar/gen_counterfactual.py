@@ -106,7 +106,6 @@ class ROAR(object):
             out.backward()
             g = x_t.grad
             x_t = x_t - self.alpha * g
-
             if torch.linalg.norm(self.alpha * g).item() < 1e-3:
                 break
         return x_t.detach().numpy()

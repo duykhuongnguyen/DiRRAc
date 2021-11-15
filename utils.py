@@ -66,7 +66,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.2, alpha=1e-2, dist_type='l1')
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=1, alpha=1e-3, dist_type='l1', max_iter=100)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
@@ -175,7 +175,7 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
 
         drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10)
         # Train model with data
-        for j in range(10):
+        for j in range(2):
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
             clf = mlp_classifier(X_train, y_train)
 
@@ -187,11 +187,11 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
                 ar_[j] = 0
             mace_[j] = clf.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = clf.predict(counterfactual_roar[:-1].reshape(1, -1))
-        drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
+        drra_nm_m1[i], drra_gm_m1[i], ar_m1[i], mace_m1[i], roar_m1[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
 
         drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10), np.zeros(10)
         # Train model with shifted data
-        for j in range(10):
+        for j in range(2):
             X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
             clf_shifted = mlp_classifier(X_train_shifted, y_train_shifted)
 
@@ -203,7 +203,7 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True):
                 ar_[j] = 0
             mace_[j] = clf_shifted.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = clf_shifted.predict(counterfactual_roar[:-1].reshape(1, -1))
-        drra_nm, drra_gm, ar, mace, roar = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
+        drra_nm[i], drra_gm[i], ar[i], mace[i], roar[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
 
     validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar_l, X_recourse) + cal_cost(counterfactual_ar_l, X_recourse, 'l2')
     validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace_l, X_recourse) + cal_cost(counterfactual_mace_l, X_recourse, 'l2')

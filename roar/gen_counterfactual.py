@@ -85,7 +85,7 @@ class ROAR(object):
 
         for i in range(self.dim):
             sigma_hat[i] = sigma[i].x
-
+        
         return sigma_hat
 
 
@@ -109,7 +109,6 @@ class ROAR(object):
 
             if torch.linalg.norm(self.alpha * g).item() < 1e-3:
                 break
-
         return x_t.detach().numpy()
 
 

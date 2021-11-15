@@ -251,8 +251,8 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
                 )
                 counterfactual_samples[count] = explanation_object['counterfactual']
             except:
-                # counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
-                counterfactual_samples[count] = X_test_pred_labels0.to_numpy()[i]
+                counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
+                # counterfactual_samples[count] = X_test_pred_labels0.to_numpy()[i]
             count += 1
 
           return counterfactual_samples

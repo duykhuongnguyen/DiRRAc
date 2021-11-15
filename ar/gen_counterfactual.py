@@ -42,8 +42,12 @@ class LinearAR(object):
           action_set=self.action_set,
           x=x
         )
-        output = rb.fit()
-        counterfactual_sample = np.add(x, output['actions'])
+
+        try:
+            output = rb.fit()
+            counterfactual_sample = np.add(x, output['actions'])
+        except:
+            counterfactual_sample = np.zeros(x.shape)
 
         return counterfactual_sample
 

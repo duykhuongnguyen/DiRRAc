@@ -65,7 +65,7 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x <= 1)
+            model.addConstr(x[self.num_discrete:] <= 1)
 
         if self.padding:
              model.addConstr(x[self.dim - 1] == 1)
@@ -181,7 +181,7 @@ class Optimization(object):
         # If x is real data it need to be greater than 0 and less than or equal to 1
         if self.real_data:
             model.addConstr(x >= 0)
-            model.addConstr(x <= 1)
+            model.addConstr(x[self.num_discrete:] <= 1)
 
         if self.padding:
             model.addConstr(x[self.dim - 1] == 1)
@@ -240,6 +240,7 @@ class Optimization(object):
         try:
             delta_min = self.find_delta_min(x_0)
         except:
+            print("No solution for delta")
             return
 
         delta = delta_min + self.delta_add

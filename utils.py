@@ -219,7 +219,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     mlp = mlp_classifier(X_train, y_train)
-    X_recourse = X_test[mlp.predict(X_test) == 0][:num_samples]
+    X_recourse = X_test[(mlp.predict_proba(X_test)[:, 0] > 0.5) & (mlp.predict_proba(X_test)[:, 0] < 1)][:num_samples]
 
     # Initialize modules
     beta = 0
@@ -236,12 +236,13 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1] + 1))
 
+    shift_bound = {'german': 0.1, 'sba': 0.1, 'student': 0}
     for i in range(len(X_recourse)):
         # Local approximation
         local_approx = LocalApprox(X_train, mlp.predict_proba)
         all_coef = np.zeros((10, X_train.shape[1] + 1))
         for j in range(10):
-            coef, intercept = local_approx.extract_weights(X_recourse[i])
+            coef, intercept = local_approx.extract_weights(X_recourse[i], shift=shift_bound[dataset_string])
             all_coef[j] = np.concatenate((coef, intercept))
         theta = np.zeros((1, X_train.shape[1] + 1))
         sigma = np.zeros((1, X_train.shape[1] + 1, X_train.shape[1] + 1))
@@ -253,14 +254,16 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
         ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-        roar = ROAR(X_recourse, coef.squeeze(), intercept, 0.1, sigma_max=0.1, alpha=1e-2, dist_type='l1', max_iter=100)
+        roar = ROAR(X_recourse, coef.squeeze(), intercept, 0.1, sigma_max=0.1, alpha=1e-2, dist_type='l1', max_iter=1)
 
         # Generate counterfactual
         print("Generate counterfactual for DiDRAc-NM")
         counterfactual_drra_nm = drra_module.fit_instance(pad_ones(X_recourse[i], ax=0))
+        print(np.dot(theta[0], counterfactual_drra_nm), np.dot(theta[0], pad_ones(X_recourse[i], ax=0)), mlp.predict_proba(counterfactual_drra_nm[:-1].reshape(1, -1)))
         counterfactual_drra_nm_l[i] = counterfactual_drra_nm
         print("Generate counterfactual for DiDRAc-GM")
         counterfactual_drra_gm = drra_module.fit_instance(pad_ones(X_recourse[i], ax=0), model='gm')
+        print(np.dot(theta[0], counterfactual_drra_gm), np.dot(theta[0], pad_ones(X_recourse[i], ax=0)), mlp.predict_proba(counterfactual_drra_gm[:-1].reshape(1, -1)))
         counterfactual_drra_gm_l[i] = counterfactual_drra_gm
         print("Generate counterfactual for AR")
         counterfactual_ar = ar_module.fit_instance(X_recourse[i])
@@ -275,8 +278,8 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle)
         # Train model with data
         for j in range(num_shuffle):
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
-            clf = mlp_classifier(X_train, y_train)
+            # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
+            clf = mlp_classifier(X_train, y_train, random_state=j+1)
 
             drra_nm_[j] = clf.predict(counterfactual_drra_nm[:-1].reshape(1, -1))
             drra_gm_[j] = clf.predict(counterfactual_drra_gm[:-1]. reshape(1, -1))

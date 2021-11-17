@@ -551,7 +551,7 @@ class DatasetAttribute(object):
     parent_name_kurz,
     lower_bound,
     upper_bound):
-
+    
     if attr_type not in VALID_ATTRIBUTE_DATA_TYPES:
       raise Exception("`attr_type` must be one of %r." % VALID_ATTRIBUTE_DATA_TYPES)
 
@@ -829,6 +829,14 @@ def loadDataset(dataset_name, return_one_hot, load_from_cache = False, debug_fla
         attr_type = 'categorical'                                                                      
         actionability = 'any'                                                                          
         mutability = True
+      
+      elif col_name == 'Selected':
+        attr_type = 'categorical'
+
+        actionability = 'any'
+
+        mutability = True
+
       elif col_name == 'New': # TODO: make sex and race immutable in all datasets!                    
         attr_type = 'categorical'                                                                      
         actionability = 'any'                                                                          

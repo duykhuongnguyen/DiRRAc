@@ -136,7 +136,6 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
     drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1] + 1))
-
     for i in range(len(X_recourse)):
         # Local approximation
         local_approx = LocalApprox(X_train, mlp.predict_proba)
@@ -220,7 +219,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     mlp = mlp_classifier(X_train, y_train)
     X_recourse = X_test[(mlp.predict_proba(X_test)[:, 0] > 0.5) & (mlp.predict_proba(X_test)[:, 0] < 1)][:num_samples]
-
+    print(mlp.score(X_test, y_test))
     # Initialize modules
     beta = 0
     delta = 0.5
@@ -235,7 +234,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples), np.zeros(num_samples)
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1] + 1)), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1])), np.zeros((len(X_recourse), X.shape[1] + 1))
-
+    
     shift_bound = {'german': 0.1, 'sba': 0.1, 'student': 0}
     for i in range(len(X_recourse)):
         # Local approximation

@@ -10,15 +10,19 @@ np.random.seed(RANDOM_SEED)
 
 
 def load_sba(shift=False):                                                                      
-    orig_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_processed_.csv')           
-    processed_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_processed_shift_.csv')
+    # orig_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_processed_.csv')           
+    orig_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_8905.csv')
+    # processed_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_processed_shift_.csv')
+    processed_file = os.path.join(os.path.dirname(__file__), 'processed_data/sba_0614.csv')
     read_file = orig_file if not shift else processed_file                                               
                                                                                                          
     df = pd.read_csv(read_file)
-    for i in range(df.shape[0]):
-        if df.iloc[i, 5] > 1:
-            df.iloc[i, 5] = 1.0
+    # for i in range(df.shape[0]):
+    #     if df.iloc[i, 5] > 1:
+    #         df.iloc[i, 5] = 1.0
     # df.iloc[392, 4] = 1.0
+    df['Selected'] += 1
+    df['UrbanRural'] += 1
     df['New'] += 1
     df['RealEstate'] += 1
     df['Recession'] += 1

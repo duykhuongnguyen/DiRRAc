@@ -41,41 +41,40 @@ def main(args):
     val_m1_tex, val_tex, l1_tex, l2_tex = [], [], [], []
 
     # Generate counterfactual and evaluate
-    # german_validity = utils.train_real_world_data('german', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear_ver2('german', num_samples=args.num_samples)
-    # post = post_process(german_validity)
-    # val_m1_tex += post[0]
-    # val_tex += post[1]
-    # l1_tex += post[2]
-    # l2_tex += post[3]
+    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear_ver2('german', num_samples=args.num_samples)
+    post = post_process(german_validity)
+    val_m1_tex += post[0]
+    val_tex += post[1]
+    l1_tex += post[2]
+    l2_tex += post[3]
 
     sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear_ver2('sba', num_samples=args.num_samples)
-    print(sba_validity)
-    # post = post_process(sba_validity)
-    # val_m1_tex += post[0]
-    # val_tex += post[1]
-    # l1_tex += post[2]
-    # l2_tex += post[3]
+    post = post_process(sba_validity)
+    val_m1_tex += post[0]
+    val_tex += post[1]
+    l1_tex += post[2]
+    l2_tex += post[3]
 
-    # student_validity = utils.train_real_world_data('student', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear_ver2('student', num_samples=args.num_samples)
-    # post = post_process(student_validity)
-    # val_m1_tex += post[0]
-    # val_tex += post[1]
-    # l1_tex += post[2]
-    # l2_tex += post[3]
+    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples) if args.mode == 'linear' else utils.train_non_linear_ver2('student', num_samples=args.num_samples)
+    post = post_process(student_validity)
+    val_m1_tex += post[0]
+    val_tex += post[1]
+    l1_tex += post[2]
+    l2_tex += post[3]
 
-    # df['val_m1'] = val_m1_tex
-    # df['val'] = val_tex
-    # df['l1'] = l1_tex
-    # df['l2'] = l2_tex
+    df['val_m1'] = val_m1_tex
+    df['val'] = val_tex
+    df['l1'] = l1_tex
+    df['l2'] = l2_tex
 
     # Extract csv file
-    # if not os.path.exists('result/real_data'):
-    #      os.makedirs('result/real_data')
-    # df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_{args.mode}.csv', index=False)
+    if not os.path.exists('result/real_data'):
+        os.makedirs('result/real_data')
+    df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_{args.mode}.csv', index=False)
 
-    # print("german_validity: ", german_validity)
-    # print("sba_validity: ", sba_validity)
-    # print("student_validity: ", student_validity)
+    print("german_validity: ", german_validity)
+    print("sba_validity: ", sba_validity)
+    print("student_validity: ", student_validity)
 
 
 if __name__ == '__main__':

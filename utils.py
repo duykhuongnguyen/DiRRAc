@@ -55,18 +55,18 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # Initialize modules
     beta = 0
-    delta = 0.2
+    delta = 2
     k = 1
     p = np.array([1])
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
     theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 10)
-    num_discrete = {'german': 4, 'sba': 2, 'student': 4}
+    num_discrete = {'german': 3, 'sba': 7, 'student': 4}
     drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.1, alpha=1e-3, dist_type='l1', max_iter=100)
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.1, alpha=1e-3, dist_type='l1', max_iter=200)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
@@ -239,7 +239,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = [], [], [], [], []
     X_recourse_ = []
 
-    shift_bound = {'german': 0.1, 'sba': 0.1, 'student': 0}
+    shift_bound = {'german': 0.1, 'sba': 0.1, 'student': 0.1}
     for i in range(len(X_recourse)):
         # Local approximation
         local_approx = LocalApprox(X_train, mlp.predict_proba)

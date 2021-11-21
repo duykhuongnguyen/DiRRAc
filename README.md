@@ -61,5 +61,5 @@ python train_real_data.py --mode non --num_samples <number of samples to evaluat
 
 Example:
 ```
-python train_real_data.py --mode non --num_samples 40
+python train_real_data.py --mode non --num_samples 20
 ```

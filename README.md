@@ -19,6 +19,10 @@ pip install -r requirements.txt
 
 5. [Figure6](figure6.ipynb)
 
+6. [Figure8](figure8.ipynb)
+
+7. [Figure9](figure9.ipynb)
+
 Results of each figure are saved in result/
 
 ## 3. Experiments with real-world data:
@@ -26,12 +30,36 @@ Results of each figure are saved in result/
 Generate recourse and evaluate on 3 different real-world datasets:
 
 ```
-python train_real_data.py --num_samples <number of samples to evaluate> --save_dir <file name>
+python train_real_data.py --mode linear --num_samples <number of samples to evaluate>
 ```
 
 Example:
 ```
-python train_real_data.py --num_samples 40 --save_dir real_data_40
+python train_real_data.py --mode linear --num_samples 40
+```
+
+Experiments using $\covsa_1=0.1 * I$:
+
+```
+python train_real_data.py --mode linear --num_samples <number of samples to evaluate> --sigma_identity True
+```
+
+Example:
+```
+python train_real_data.py --mode linear --num_samples 40 --sigma_identity True
 ```
 
 Result of csv format is saved in result/real_data/
+
+## 4. Experiments with non-linear model:
+
+Generate recourse for non-linear model and evaluate on 3 different real-world datasets:
+
+```
+python train_real_data.py --mode non --num_samples <number of samples to evaluate>
+```
+
+Example:
+```
+python train_real_data.py --mode non --num_samples 40
+```

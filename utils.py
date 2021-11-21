@@ -126,7 +126,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     mlp = mlp_classifier(X_train, y_train)
     X_recourse = X_test[(mlp.predict_proba(X_test)[:, 0] > 0.5) & (mlp.predict_proba(X_test)[:, 0] < 1)][:num_samples]
-    
+
     # Initialize modules
     beta = 0
     delta = 0.5
@@ -149,6 +149,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         local_approx = LocalApprox(X_train, mlp.predict_proba)
         all_coef = np.zeros((10, X_train.shape[1] + 1))
         for j in range(10):
+            B
             coef, intercept = local_approx.extract_weights(X_recourse[i], shift=shift_bound[dataset_string])
             all_coef[j] = np.concatenate((coef, intercept))
         theta = np.zeros((1, X_train.shape[1] + 1))
@@ -197,7 +198,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
                 ar_[j] = 0
             mace_[j] = mlp.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = mlp.predict(counterfactual_roar[:-1].reshape(1, -1))
-        
+
         drra_nm_m1[i], drra_gm_m1[i], ar_m1[i], mace_m1[i], roar_m1[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
         drra_nm_m1.append(np.mean(drra_nm_))
         drra_gm_m1.append(np.mean(drra_gm_))
@@ -225,7 +226,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         ar_m2.append(np.mean(ar_))
         mace_m2.append(np.mean(mace_))
         roar_m2.append(np.mean(roar_))
-    
+
     drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.array(drra_nm_m1), np.array(drra_gm_m1), np.array(ar_m1), np.array(mace_m1), np.array(roar_m1)
     drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.array(drra_nm_m2), np.array(drra_gm_m2), np.array(ar_m2), np.array(mace_m2), np.array(roar_m2)
     counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.array(counterfactual_drra_nm_l), np.array(counterfactual_drra_gm_l), np.array(counterfactual_ar_l), np.array(counterfactual_mace_l), np.array(counterfactual_roar_l)

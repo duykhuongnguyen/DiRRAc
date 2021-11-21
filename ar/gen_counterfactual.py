@@ -36,14 +36,13 @@ class LinearAR(object):
         Returns:
             counterfactual_sample: counterfactual of input x
         """
-        rb = rs.RecourseBuilder(
-          coefficients=self.coef,
-          intercept=self.intercept,
-          action_set=self.action_set,
-          x=x
-        )
-
         try:
+            rb = rs.RecourseBuilder(
+                coefficients=self.coef,
+                intercept=self.intercept,
+                action_set=self.action_set,
+                x=x
+            )
             output = rb.fit()
             counterfactual_sample = np.add(x, output['actions'])
         except:

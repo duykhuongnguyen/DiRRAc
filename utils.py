@@ -55,18 +55,19 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # Initialize modules
     beta = 0
-    delta = 2
+    delta = 1.5
     k = 1
     p = np.array([1])
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
-    theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 10)
+    theta, sigma = train_theta(pad_ones(np.concatenate((X_train, X_test))), np.concatenate((y_train, y_test)), 5)
+    sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
     num_discrete = {'german': 3, 'sba': 7, 'student': 4}
     drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 0.1, sigma_max=0.1, alpha=1e-3, dist_type='l1', max_iter=200)
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=10)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
@@ -76,11 +77,11 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     print("Generate counterfactual for DiDRAc-GM")
     counterfactual_drra_gm = drra_module.fit_data(pad_ones(X_recourse), model='gm')
     print("Generate counterfactual for AR")
-    counterfactual_ar = ar_module.fit_data(X_recourse)
+    # counterfactual_ar = ar_module.fit_data(X_recourse)
     print("Generate counterfactual for MACE")
-    counterfactual_mace = runExperiments([dataset_string], ['lr'], ['one_norm'], ['MACE_eps_1e-5'], 0, len(X_recourse), 'neg_only', '0', theta[:, :-1], theta[:, -1])
+    # counterfactual_mace = runExperiments([dataset_string], ['lr'], ['one_norm'], ['MACE_eps_1e-5'], 0, len(X_recourse), 'neg_only', '0', theta[:, :-1], theta[:, -1])
     print("Generate counterfactual for ROAR")
-    counterfactual_roar = roar.fit_data(roar.data)
+    # counterfactual_roar = roar.fit_data(roar.data)
 
     drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with original data
@@ -90,9 +91,9 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
         drra_nm_m1[i] = cal_validity(clf.predict(counterfactual_drra_nm[:, :-1]))
         drra_gm_m1[i] = cal_validity(clf.predict(counterfactual_drra_gm[:, :-1]))
-        ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
-        mace_m1[i] = cal_validity(clf.predict(counterfactual_mace))
-        roar_m1[i] = cal_validity(clf.predict(counterfactual_roar[:, :-1]))
+        # ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
+        # mace_m1[i] = cal_validity(clf.predict(counterfactual_mace))
+        # roar_m1[i] = cal_validity(clf.predict(counterfactual_roar[:, :-1]))
 
     drra_nm, drra_gm, ar, mace, roar = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with shifted data
@@ -102,15 +103,15 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
         drra_nm[i] = cal_validity(clf_shifted.predict(counterfactual_drra_nm[:, :-1]))
         drra_gm[i] = cal_validity(clf_shifted.predict(counterfactual_drra_gm[:, :-1]))
-        ar[i] = cal_validity(clf_shifted.predict(counterfactual_ar))
-        mace[i] = cal_validity(clf_shifted.predict(counterfactual_mace))
-        roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar[:, :-1]))
+        # ar[i] = cal_validity(clf_shifted.predict(counterfactual_ar))
+        # mace[i] = cal_validity(clf_shifted.predict(counterfactual_mace))
+        # roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar[:, :-1]))
 
-    validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
-    validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
+    # validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
+    # validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
     validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
     validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
-    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
+    # validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
 
     return validity
 
@@ -257,7 +258,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
         ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-        roar = ROAR(X_recourse, coef.squeeze(), intercept, 0.1, sigma_max=0.1, alpha=1e-2, dist_type='l1', max_iter=1000)
+        roar = ROAR(X_recourse, coef.squeeze(), intercept, 1e-6, sigma_max=0.1, alpha=1e-2, dist_type='l1', max_iter=1000)
 
         # Generate counterfactual
         print("Generate counterfactual for DiDRAc-NM")

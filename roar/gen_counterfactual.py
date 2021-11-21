@@ -102,10 +102,11 @@ class ROAR(object):
             sigma_hat = self.find_optimal_sigma(coef, x_t.detach().numpy())
             coef_ = coef + torch.from_numpy(sigma_hat)
             x_t.retain_grad()
-            out = (torch.dot(coef_, x_t) - 1) ** 2 + self.lmbda * torch.linalg.norm(x_t - x_0, ord=ord)
+            out = (1 / (1 + torch.exp(-torch.dot(coef_, x_t))) - 1) ** 2 + self.lmbda * torch.linalg.norm(x_t - x_0, ord=ord)
             out.backward()
             g = x_t.grad
             x_t = x_t - self.alpha * g
+            print(torch.dot(coef, x_t))
             if torch.linalg.norm(self.alpha * g).item() < 1e-3:
                 break
         return x_t.detach().numpy()

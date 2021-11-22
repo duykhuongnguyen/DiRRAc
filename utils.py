@@ -65,7 +65,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     if sigma_identity:
         sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
-        delta = 0.5
+        delta = 1.5
 
     num_discrete = {'german': 3, 'sba': 7, 'student': 4}
     drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)

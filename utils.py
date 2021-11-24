@@ -51,6 +51,8 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
+    print(X[0])
+    exit()
     X_recourse = X_test[model_trained.predict(X_test) == 0][:num_samples]
 
     # Initialize modules
@@ -68,7 +70,9 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         delta = 1.5
 
     num_discrete = {'german': 3, 'sba': 7, 'student': 4}
-    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
+    immutable_d = {'german': None, 'sba': [-1, -2], 'student': None}
+    non_icr_d = {'german': [3], 'sba': None, 'student': [0]}
+    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding, immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string])
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
     roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=10)

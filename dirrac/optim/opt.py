@@ -10,7 +10,7 @@ import gurobipy as grb
 class Optimization(object):
     """ Class for optimization problem """
 
-    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, num_discrete=None, padding=False):
+    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, num_discrete=None, padding=False, immutable_l=None, non_icr_l=None):
         self.delta_add = delta_add
         self.K = K
         self.dim = dim
@@ -26,6 +26,8 @@ class Optimization(object):
         self.real_data = real_data
         self.num_discrete = num_discrete
         self.padding = padding
+        self.immutable_l = immutable_l
+        self.non_icr_l = non_icr_l
 
         self.df_autograd = value_and_grad(self.f_moments_infor) if not gaussian else value_and_grad(self.f_gaussian)
 
@@ -75,6 +77,15 @@ class Optimization(object):
                 model.addConstr(w == grb.abs_(v))
             # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
             # model.addConstr(x_sub_0_abs >= 0)
+
+        # Add actionability constraints
+        if self.immutable_l:
+            for i in range(len(self.immutable_l)):
+                x[i] = x_0[i]
+
+        if self.non_icr_l:
+            for i in range(len(self.non_icr_l)):
+                x[i] >= x_0[i]
 
         for k in range(self.K):
             model.addConstr(-self.theta[k].T @ x + self.rho[k] * x_norm <= 0)   # Constrant
@@ -185,6 +196,15 @@ class Optimization(object):
 
         if self.padding:
             model.addConstr(x[self.dim - 1] == 1)
+
+        # Add actionability constraints
+        if self.immutable_l:
+            for i in range(len(self.immutable_l)):
+                x[i] = x_0[i]
+
+        if self.non_icr_l:
+            for i in range(len(self.non_icr_l)):
+                x[i] >= x_0[i]
 
         if self.dist_type == 'l1':
             for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):

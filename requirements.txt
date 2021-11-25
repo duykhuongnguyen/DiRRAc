@@ -33,3 +33,4 @@ wcwidth==0.1.9
 torch==1.7.0
 lime
 actionable-recourse
+carla-recourse

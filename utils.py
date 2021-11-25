@@ -8,6 +8,7 @@ from dirrac.classifier.mlp import mlp_classifier
 from dirrac.gen_counterfactual import DRRA
 from ar.gen_counterfactual import LinearAR
 from roar.gen_counterfactual import ROAR
+from wachter.gen_counterfactual import Wachter
 from mace.batchTest import runExperiments
 from lime_explainer.local_approx import LocalApprox
 
@@ -63,8 +64,6 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     zeta = 1
     theta, sigma = train_theta(pad_ones(X_train), y_train, 5)
 
-    # print(np.dot(pad_ones(X_recourse)[0], theta[0]), np.linalg.norm(pad_ones(X_recourse)[0]))
-
     if sigma_identity:
         sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
         delta = 1.5
@@ -76,8 +75,9 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
     roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=10)
+    wachter = Wachter(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, alpha=0.1, dist_type='l1', max_iter=100)
 
-    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
+    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
     # Generate counterfactual
     print("Generate counterfactual for DiDRAc-NM")
@@ -90,8 +90,10 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     # counterfactual_mace = runExperiments([dataset_string], ['lr'], ['one_norm'], ['MACE_eps_1e-5'], 0, len(X_recourse), 'neg_only', '0', theta[:, :-1], theta[:, -1])
     print("Generate counterfactual for ROAR")
     # counterfactual_roar = roar.fit_data(roar.data)
+    print("Generate counterfactual for Wachter")
+    counterfactual_wachter = wachter.fit_data(wachter.data)
 
-    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1, wachter_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with original data
     for i in range(100):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
@@ -102,8 +104,9 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         # ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
         # mace_m1[i] = cal_validity(clf.predict(counterfactual_mace))
         # roar_m1[i] = cal_validity(clf.predict(counterfactual_roar[:, :-1]))
+        wachter_m1[i] = cal_validity(clf.predict(counterfactual_wachter[:, :-1]))
 
-    drra_nm, drra_gm, ar, mace, roar = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm, drra_gm, ar, mace, roar, wachter = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with shifted data
     for i in range(100):
         X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
@@ -114,12 +117,14 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         # ar[i] = cal_validity(clf_shifted.predict(counterfactual_ar))
         # mace[i] = cal_validity(clf_shifted.predict(counterfactual_mace))
         # roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar[:, :-1]))
+        wachter[i] = cal_validity(clf_shifted.predict(counterfactual_wachter[:, :-1]))
 
     # validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
     # validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
     validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
     validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
     # validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
+    validity['Wachter'] = [np.mean(wachter_m1), np.std(wachter_m1)] + [np.mean(wachter), np.std(wachter)] + cal_cost(counterfactual_wachter[:, :-1], X_recourse) + cal_cost(counterfactual_wachter[:, :-1], X_recourse, 'l2')
 
     return validity
 
@@ -139,12 +144,12 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
-    num_discrete = {'german': 4, 'sba': 2, 'student': 4}
+    num_discrete = {'german': 3, 'sba': 8, 'student': 4}
 
-    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
-    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = [], [], [], [], []
-    drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = [], [], [], [], []
-    counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = [], [], [], [], []
+    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
+    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1, wachter_m1 = [], [], [], [], [], []
+    drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2, wachter_m2 = [], [], [], [], [], []
+    counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l, counterfactual_wachter_l = [], [], [], [], [], []
     X_recourse_ = []
 
     shift_bound = {'german': 0.1, 'sba': 0.1, 'student': 0.1}
@@ -153,7 +158,6 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         local_approx = LocalApprox(X_train, mlp.predict_proba)
         all_coef = np.zeros((10, X_train.shape[1] + 1))
         for j in range(10):
-            B
             coef, intercept = local_approx.extract_weights(X_recourse[i], shift=shift_bound[dataset_string])
             all_coef[j] = np.concatenate((coef, intercept))
         theta = np.zeros((1, X_train.shape[1] + 1))
@@ -165,6 +169,8 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
 
         ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
         roar = ROAR(X_recourse, coef.squeeze(), intercept, 1e-6, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=30)
+        wachter = Wachter(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, alpha=0.1, dist_type='l1', max_iter=100)
+
 
         # Generate counterfactual
         print("Generate counterfactual for DiDRAc-NM")
@@ -187,8 +193,11 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         print("Generate counterfactual for ROAR")
         counterfactual_roar = roar.fit_instance(roar.data[i])
         counterfactual_roar_l.append(counterfactual_roar)
+        print("Generate counterfactual for Wachter")
+        counterfactual_wachter = wachter.fit_instance(wachter.data[i])
+        counterfactual_wachter_l.append(counterfactual_wachter)
 
-        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)
+        drra_nm_, drra_gm_, ar_, mace_, roar_, wachter_ = np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)
         # Train model with data
         for j in range(1):
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i+1)
@@ -202,15 +211,17 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
                 ar_[j] = 0
             mace_[j] = mlp.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = mlp.predict(counterfactual_roar[:-1].reshape(1, -1))
+            wachter_[j] = mlp.predict(counterfactual_wachter[:-1].reshape(1, -1))
 
-        drra_nm_m1[i], drra_gm_m1[i], ar_m1[i], mace_m1[i], roar_m1[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
+        drra_nm_m1[i], drra_gm_m1[i], ar_m1[i], mace_m1[i], roar_m1[i], wachter_m1[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_), np.mean(wachter_)
         drra_nm_m1.append(np.mean(drra_nm_))
         drra_gm_m1.append(np.mean(drra_gm_))
         ar_m1.append(np.mean(ar_))
         mace_m1.append(np.mean(mace_))
         roar_m1.append(np.mean(roar_))
+        wachter_m1.append(np.mean(wachter_))
 
-        drra_nm_, drra_gm_, ar_, mace_, roar_ = np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle)
+        drra_nm_, drra_gm_, ar_, mace_, roar_, wachter_ = np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle), np.zeros(num_shuffle)
         # Train model with shifted data
         for j in range(num_shuffle):
             X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.1, random_state=i+1)
@@ -224,16 +235,19 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
                 ar_[j] = 0
             mace_[j] = clf_shifted.predict(counterfactual_mace.reshape(1, -1))
             roar_[j] = clf_shifted.predict(counterfactual_roar[:-1].reshape(1, -1))
-        drra_nm_m2[i], drra_gm_m2[i], ar_m2[i], mace_m2[i], roar_m2[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_)
+            wachter_[j] = clf_shifted.predict(counterfactual_wachter[:-1].reshape(1, -1))
+
+        drra_nm_m2[i], drra_gm_m2[i], ar_m2[i], mace_m2[i], roar_m2[i], wachter_m2[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(mace_), np.mean(roar_), np.mean(wachter_)
         drra_nm_m2.append(np.mean(drra_nm_))
         drra_gm_m2.append(np.mean(drra_gm_))
         ar_m2.append(np.mean(ar_))
         mace_m2.append(np.mean(mace_))
         roar_m2.append(np.mean(roar_))
+        wachter_m2.append(np.mean(wachter_))
 
-    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1 = np.array(drra_nm_m1), np.array(drra_gm_m1), np.array(ar_m1), np.array(mace_m1), np.array(roar_m1)
-    drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2 = np.array(drra_nm_m2), np.array(drra_gm_m2), np.array(ar_m2), np.array(mace_m2), np.array(roar_m2)
-    counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l = np.array(counterfactual_drra_nm_l), np.array(counterfactual_drra_gm_l), np.array(counterfactual_ar_l), np.array(counterfactual_mace_l), np.array(counterfactual_roar_l)
+    drra_nm_m1, drra_gm_m1, ar_m1, mace_m1, roar_m1, wachter_m1 = np.array(drra_nm_m1), np.array(drra_gm_m1), np.array(ar_m1), np.array(mace_m1), np.array(roar_m1), np.array(wachter_m1)
+    drra_nm_m2, drra_gm_m2, ar_m2, mace_m2, roar_m2, wachter_m2 = np.array(drra_nm_m2), np.array(drra_gm_m2), np.array(ar_m2), np.array(mace_m2), np.array(roar_m2), np.array(wachter_m2)
+    counterfactual_drra_nm_l, counterfactual_drra_gm_l, counterfactual_ar_l, counterfactual_mace_l, counterfactual_roar_l, counterfactual_wachter_l = np.array(counterfactual_drra_nm_l), np.array(counterfactual_drra_gm_l), np.array(counterfactual_ar_l), np.array(counterfactual_mace_l), np.array(counterfactual_roar_l), np.array(counterfactual_wachter_l)
     X_recourse_ = np.array(X_recourse_)
 
     validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar_m2), np.std(ar_m2)] + cal_cost(counterfactual_ar_l, X_recourse_) + cal_cost(counterfactual_ar_l, X_recourse_, 'l2')
@@ -241,5 +255,6 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
     validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm_m2), np.std(drra_nm_m2)] + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse_) + cal_cost(counterfactual_drra_nm_l[:, :-1], X_recourse_, 'l2')
     validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm_m2), np.std(drra_gm_m2)] + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse_) + cal_cost(counterfactual_drra_gm_l[:, :-1], X_recourse_, 'l2')
     validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar_m2), np.std(roar_m2)] + cal_cost(counterfactual_roar_l[:, :-1], X_recourse_) + cal_cost(counterfactual_roar_l[:, :-1], X_recourse_, 'l2')
+    validity['Wachter'] = [np.mean(wachter_m1), np.std(wachter_m1)] + [np.mean(wachter_m2), np.std(wachter_m2)] + cal_cost(counterfactual_wachter_l[:, :-1], X_recourse_) + cal_cost(counterfactual_wachter_l[:, :-1], X_recourse_, 'l2')
 
     return validity

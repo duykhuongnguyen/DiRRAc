@@ -81,11 +81,11 @@ class Optimization(object):
         # Add actionability constraints
         if self.immutable_l:
             for i in range(len(self.immutable_l)):
-                x[i] = x_0[i]
+                model.addConstr(x[self.immutable_l[i]] == x_0[self.immutable_l[i]])
 
         if self.non_icr_l:
             for i in range(len(self.non_icr_l)):
-                x[i] >= x_0[i]
+                model.addConstr(x[self.non_icr_l[i]] >= x_0[self.non_icr_l[i]])
 
         for k in range(self.K):
             model.addConstr(-self.theta[k].T @ x + self.rho[k] * x_norm <= 0)   # Constrant
@@ -200,11 +200,11 @@ class Optimization(object):
         # Add actionability constraints
         if self.immutable_l:
             for i in range(len(self.immutable_l)):
-                x[i] = x_0[i]
+                model.addConstr(x[self.immutable_l[i]] == x_0[self.immutable_l[i]])
 
         if self.non_icr_l:
             for i in range(len(self.non_icr_l)):
-                x[i] >= x_0[i]
+                model.addConstr(x[self.non_icr_l[i]] >= x_0[self.non_icr_l[i]])
 
         if self.dist_type == 'l1':
             for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
@@ -279,5 +279,5 @@ class Optimization(object):
             x_t = x_opt
             if abs(f_x_opt - f_x) < 1e-3:
                 break
-
+        
         return f_x_opt, x_opt

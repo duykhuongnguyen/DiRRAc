@@ -48,7 +48,7 @@ def cal_validity(pred):
     return sum(pred == 1) / len(pred)
 
 
-def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True, sigma_identity=False):
+def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True, sigma_identity=False, actionable=True):
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
@@ -68,16 +68,19 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
         delta = 1.5
 
-    num_discrete = {'german': 3, 'sba': 8, 'student': 4}
-    immutable_d = {'german': [2], 'sba': [X_train.shape[1] - 2, X_train.shape[1] - 1, X_train.shape[1] - 7, X_train.shape[1] - 8, X_train.shape[1] - 9], 'student': [10, 11]}
-    non_icr_d = {'german': [3], 'sba': None, 'student': [0, 1]}
-    drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding, immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string])
+    if actionable:
+        num_discrete = {'german': 3, 'sba': 8, 'student': 4}
+        immutable_d = {'german': [2], 'sba': [X_train.shape[1] - 2, X_train.shape[1] - 1, X_train.shape[1] - 7, X_train.shape[1] - 8, X_train.shape[1] - 9], 'student': [10, 11]}
+        non_icr_d = {'german': [3], 'sba': None, 'student': [0, 1]}
+        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding, immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string])
+    else:
+        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=10)
-    wachter = Wachter(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, alpha=0.1, dist_type='l1', max_iter=100)
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, max_iter=10)
+    wachter = Wachter(X_recourse, model_trained, decision_threshold=0.6, max_iter=1000, linear=True)
 
-    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'MACE': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
+    validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
     # Generate counterfactual
     print("Generate counterfactual for DiDRAc-NM")
@@ -85,11 +88,9 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     print("Generate counterfactual for DiDRAc-GM")
     counterfactual_drra_gm = drra_module.fit_data(pad_ones(X_recourse), model='gm')
     print("Generate counterfactual for AR")
-    # counterfactual_ar = ar_module.fit_data(X_recourse)
-    print("Generate counterfactual for MACE")
-    # counterfactual_mace = runExperiments([dataset_string], ['lr'], ['one_norm'], ['MACE_eps_1e-5'], 0, len(X_recourse), 'neg_only', '0', theta[:, :-1], theta[:, -1])
+    counterfactual_ar = ar_module.fit_data(X_recourse)
     print("Generate counterfactual for ROAR")
-    # counterfactual_roar = roar.fit_data(roar.data)
+    counterfactual_roar = roar.fit_data(roar.data)
     print("Generate counterfactual for Wachter")
     counterfactual_wachter = wachter.fit_data(wachter.data)
 
@@ -101,12 +102,11 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
         drra_nm_m1[i] = cal_validity(clf.predict(counterfactual_drra_nm[:, :-1]))
         drra_gm_m1[i] = cal_validity(clf.predict(counterfactual_drra_gm[:, :-1]))
-        # ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
-        # mace_m1[i] = cal_validity(clf.predict(counterfactual_mace))
-        # roar_m1[i] = cal_validity(clf.predict(counterfactual_roar[:, :-1]))
-        wachter_m1[i] = cal_validity(clf.predict(counterfactual_wachter[:, :-1]))
+        ar_m1[i] = cal_validity(clf.predict(counterfactual_ar))
+        roar_m1[i] = cal_validity(clf.predict(counterfactual_roar))
+        wachter_m1[i] = cal_validity(clf.predict(counterfactual_wachter))
 
-    drra_nm, drra_gm, ar, mace, roar, wachter = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm, drra_gm, ar, roar, wachter = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with shifted data
     for i in range(100):
         X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
@@ -114,16 +114,14 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
         drra_nm[i] = cal_validity(clf_shifted.predict(counterfactual_drra_nm[:, :-1]))
         drra_gm[i] = cal_validity(clf_shifted.predict(counterfactual_drra_gm[:, :-1]))
-        # ar[i] = cal_validity(clf_shifted.predict(counterfactual_ar))
-        # mace[i] = cal_validity(clf_shifted.predict(counterfactual_mace))
-        # roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar[:, :-1]))
-        wachter[i] = cal_validity(clf_shifted.predict(counterfactual_wachter[:, :-1]))
+        ar[i] = cal_validity(clf_shifted.predict(counterfactual_ar))
+        roar[i] = cal_validity(clf_shifted.predict(counterfactual_roar))
+        wachter[i] = cal_validity(clf_shifted.predict(counterfactual_wachter))
 
-    # validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
-    # validity['MACE'] = [np.mean(mace_m1), np.std(mace_m1)] + [np.mean(mace), np.std(mace)] + cal_cost(counterfactual_mace, X_recourse) + cal_cost(counterfactual_mace, X_recourse, 'l2')
+    validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
     validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
     validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
-    # validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
+    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
     validity['Wachter'] = [np.mean(wachter_m1), np.std(wachter_m1)] + [np.mean(wachter), np.std(wachter)] + cal_cost(counterfactual_wachter[:, :-1], X_recourse) + cal_cost(counterfactual_wachter[:, :-1], X_recourse, 'l2')
 
     return validity

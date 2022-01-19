@@ -36,7 +36,7 @@ def main(args):
     # Init dataframe
     df = pd.DataFrame(columns=['data', 'mt', 'val_m1', 'val', 'l1', 'l2'])
     df['data'] = ['German Credit', '', '', '', '', 'SBA', '', '', '', '', 'Student Performance', '', '', '', '']
-    df['mt'] = ['AR', 'MACE', 'ROAR', 'DiRRAc-NM', 'DiRRAc-GM'] * 3
+    df['mt'] = ['AR', 'Wachter', 'ROAR', 'DiRRAc-NM', 'DiRRAc-GM'] * 3
 
     val_m1_tex, val_tex, l1_tex, l2_tex = [], [], [], []
 
@@ -81,6 +81,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='linear')
     parser.add_argument('--num_samples', type=int, default=10)
+    parser.add_argument('--actionable', type=bool, default=False)
     parser.add_argument('--sigma_identity', type=bool, default=False)
     parser.add_argument('--save_dir', type=str, default='validity')
     args = parser.parse_args()

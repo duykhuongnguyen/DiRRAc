@@ -10,9 +10,8 @@ from torch.autograd import Variable
 
 class Wachter(object):
     """ Class for generate recourse for framework: Wachter """
-    DECISION_THRESHOLD = 0.5
 
-    def __init__(self, data, model, lmbda=0.1, lr=0.01, dist_type=1, max_iter=100, linear=False):
+    def __init__(self, data, model, lmbda=0.1, lr=0.01, dist_type=1, max_iter=1000, decision_threshold=0.5, linear=False):
         """ Parameters
 
         Args:
@@ -22,6 +21,7 @@ class Wachter(object):
         """
         self.data = data
         self.model = model
+
         if linear:
             self.coef = torch.tensor(self.model.coef_.squeeze()).float()
             self.intercept = torch.tensor(self.model.intercept_).float()
@@ -31,6 +31,7 @@ class Wachter(object):
         self.dim = self.data.shape[1]
         self.dist_type = dist_type
         self.max_iter = max_iter
+        self.decision_threshold = decision_threshold
         self.linear = linear
 
     def fit_instance(self, x_0):
@@ -44,7 +45,7 @@ class Wachter(object):
         optimizer = optim.Adam([x_t], self.lr, amsgrad=True)
 
         it = 0
-        while f_x <= Wachter.DECISION_THRESHOLD and it < self.max_iter:
+        while f_x <= self.decision_threshold and it < self.max_iter:
             optimizer.zero_grad()
             f_x = self.model(x_t).squeeze() if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
 
@@ -55,7 +56,7 @@ class Wachter(object):
             loss.backward()
             optimizer.step()
             it += 1
-        
+
         return x_t.cpu().detach().numpy().squeeze()
 
     def fit_data(self, data):

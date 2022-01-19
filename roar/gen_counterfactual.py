@@ -3,14 +3,15 @@ from tqdm import tqdm
 import numpy as np
 
 import torch
+import torch.nn as nn
 
 import gurobipy as grb
 
 
 class ROAR(object):
-    """ Class for generate counterfactual samples for framework: AR """
+    """ Class for generate recourse for framework: ROAR """
 
-    def __init__(self, data, coef, intercept, lmbda=0.1, sigma_min=None, sigma_max=0.5, alpha=0.1, dist_type='l2', max_iter=20, padding=False):
+    def __init__(self, data, coef, intercept, lmbda=0.1, delta_min=None, delta_max=0.1, alpha=0.1, dist_type=1, max_iter=20):
         """ Parameters
 
         Args:
@@ -18,33 +19,16 @@ class ROAR(object):
             model_trained: model trained on original data
             padding: True if we padding 1 at the end of instances
         """
-        self.data = np.concatenate((data, np.ones(len(data)).reshape(-1, 1)), axis=1)
-        self.coef = np.concatenate((coef, intercept))
+        self.data = data
+        self.coef = coef
+        self.intercept = intercept
         self.lmbda = lmbda
         self.alpha = alpha
         self.dim = self.data.shape[1]
         self.dist_type = dist_type
-        self.sigma_min = sigma_min
-        self.sigma_max = sigma_max
+        self.delta_min = delta_min
+        self.delta_max = delta_max
         self.max_iter = max_iter
-
-    def objective_func(self, coef, x, x_0):
-        """ Loss function - mse or log loss
-
-        Args:
-            coef: model params
-            x: a single input
-            x_0; original input
-            loss_type: mse or log loss
-            dist_type: l1 or l2
-
-        Returns:
-            output: output of objective function
-        """
-        dist = torch.linalg.norm(x - x_0)
-        loss = (torch.dot(coef, x) - 1) ** 2
-        output = loss + self.lmbda * dist
-        return output
 
     def find_optimal_sigma(self, coef, x):
         """ Find value of sigma at each step
@@ -88,29 +72,54 @@ class ROAR(object):
         
         return sigma_hat
 
-
     def fit_instance(self, x_0):
-        x_t = torch.from_numpy(x_0.copy())
-        x_t.requires_grad = True
-        x_0 = torch.from_numpy(x_0)
-        coef = torch.from_numpy(self.coef.copy())
-        coef_ = torch.from_numpy(self.coef.copy())
-        ord = None if self.dist_type=='l2' else 1
-        g = 0
+        x_0 = torch.tensor(x_0.copy()).float()
+        x_t = x_0.clone().detach().requires_grad_(True)
 
-        for iter in range(self.max_iter):
-            sigma_hat = self.find_optimal_sigma(coef, x_t.detach().numpy())
-            coef_ = coef + torch.from_numpy(sigma_hat)
-            x_t.retain_grad()
-            out = (1 / (1 + torch.exp(-torch.dot(coef_, x_t))) - 1) ** 2 + self.lmbda * torch.linalg.norm(x_t - x_0, ord=ord)
-            out.backward()
-            g = x_t.grad
-            x_t = x_t - self.alpha * g
-            print(torch.dot(coef, x_t))
-            if torch.linalg.norm(self.alpha * g).item() < 1e-3:
-                break
+        w = torch.from_numpy(self.coef.copy()).float()
+        b = torch.tensor(self.intercept).float()
+        y_target = torch.tensor([1]).float()
+        lmbda = torch.tensor(self.lmbda).float()
+        alpha = torch.tensor(self.alpha).float()
+        loss_fn = nn.BCELoss()
+
+        loss_diff = 1.0
+        min_loss = float('inf')
+        num_stable_iter = 0
+        max_stable_iter = 5
+
+        for it in range(self.max_iter):
+            if x_t.grad is not None:
+                x_t.grad.data.zero_()
+
+            with torch.no_grad():
+                lar_mul = self.delta_max / torch.sqrt(torch.linalg.norm(x_t) ** 2 + 1)
+                delta_w = - x_t * lar_mul
+                delta_b = - lar_mul
+                w_ = w + delta_w
+                b_ = b + delta_b
+
+            f_x = torch.sigmoid(torch.dot(x_t, w_) + b_).float()
+            cost = torch.dist(x_t, x_0, self.dist_type)
+            f_loss = loss_fn(f_x, y_target)
+
+            loss = f_loss + lmbda * cost
+            loss.backward()
+
+            with torch.no_grad():
+                x_t -= alpha * x_t.grad
+
+            loss_diff = min_loss - loss.data.item()
+            if loss_diff <= 1e-4:
+                num_stable_iter += 1
+                if (num_stable_iter >= max_stable_iter):
+                    break
+            else:
+                num_stable_iter = 0
+
+            min_loss = min(min_loss, loss.data.item())
+                
         return x_t.detach().numpy()
-
 
     def fit_data(self, data):
         """ Fit linear recourse action with all instances

@@ -3,14 +3,16 @@ from tqdm import tqdm
 import numpy as np
 
 import torch
-
-import gurobipy as grb
+import torch.nn as nn
+import torch.optim as optim
+from torch.autograd import Variable
 
 
 class Wachter(object):
-    """ Class for generate counterfactual samples for framework: AR """
+    """ Class for generate recourse for framework: Wachter """
+    DECISION_THRESHOLD = 0.5
 
-    def __init__(self, data, coef, intercept, lmbda=0.1, alpha=0.01, dist_type='l2', max_iter=20, padding=False):
+    def __init__(self, data, model, lmbda=0.1, lr=0.01, dist_type=1, max_iter=100, linear=False):
         """ Parameters
 
         Args:
@@ -18,56 +20,43 @@ class Wachter(object):
             model_trained: model trained on original data
             padding: True if we padding 1 at the end of instances
         """
-        self.data = np.concatenate((data, np.ones(len(data)).reshape(-1, 1)), axis=1)
-        self.coef = np.concatenate((coef, intercept))
+        self.data = data
+        self.model = model
+        if linear:
+            self.coef = torch.tensor(self.model.coef_.squeeze()).float()
+            self.intercept = torch.tensor(self.model.intercept_).float()
         self.lmbda = lmbda
-        self.alpha = alpha
+        self.lr = lr
+
         self.dim = self.data.shape[1]
         self.dist_type = dist_type
         self.max_iter = max_iter
-
-    def objective_func(self, coef, x, x_0):
-        """ Loss function - mse or log loss
-
-        Args:
-            coef: model params
-            x: a single input
-            x_0; original input
-            loss_type: mse or log loss
-            dist_type: l1 or l2
-
-        Returns:
-            output: output of objective function
-        """
-        dist = torch.linalg.norm(x - x_0)
-        loss = (torch.dot(coef, x) - 1) ** 2
-        output = loss + self.lmbda * dist
-        return output
+        self.linear = linear
 
     def fit_instance(self, x_0):
-        x_t = torch.from_numpy(x_0.copy())
-        x_t.requires_grad = True
-        x_0 = torch.from_numpy(x_0)
-        coef = torch.from_numpy(self.coef.copy())
-        ord = None if self.dist_type=='l2' else 1
-        g = 0
+        x_0 = torch.from_numpy(x_0.copy()).float()
+        x_t = Variable(x_0.clone(), requires_grad=True)
+        y_target = torch.tensor([1]).float()
+        lmbda = torch.tensor(self.lmbda).float()
+        f_x = self.model(x_t) if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
 
-        for iter in range(self.max_iter):
-            x_t.retain_grad()
-            out = (1 / (1 + torch.exp(-torch.dot(coef, x_t))) - 1) ** 2 + self.lmbda * torch.linalg.norm(x_t - x_0, ord=ord)
-            out.backward()
-            g = x_t.grad
-            x_t = x_t - self.alpha * g
-            print(torch.dot(coef, x_t), 1 / (1 + torch.exp(-torch.dot(coef, x_t))))
+        loss_fn = torch.nn.BCELoss()
+        optimizer = optim.Adam([x_t], self.lr, amsgrad=True)
 
-            if torch.linalg.norm(self.alpha * g).item() < 1e-3:
-                break
+        it = 0
+        while f_x <= Wachter.DECISION_THRESHOLD and it < self.max_iter:
+            optimizer.zero_grad()
+            f_x = self.model(x_t).squeeze() if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
 
-            if 1 / (1 + torch.exp(-torch.dot(coef, x_t))) >= 0.5:
-                break
+            cost = torch.dist(x_t, x_0, self.dist_type)
+            f_loss = loss_fn(f_x, y_target)
 
-        return x_t.detach().numpy()
-
+            loss = f_loss + lmbda * cost
+            loss.backward()
+            optimizer.step()
+            it += 1
+        
+        return x_t.cpu().detach().numpy().squeeze()
 
     def fit_data(self, data):
         """ Fit linear recourse action with all instances

@@ -77,7 +77,7 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, max_iter=10)
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, alpha=0.5, max_iter=10)
     wachter = Wachter(X_recourse, model_trained, decision_threshold=0.6, max_iter=1000, linear=True)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
@@ -121,8 +121,8 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
     validity['AR'] = [np.mean(ar_m1), np.std(ar_m1)] + [np.mean(ar), np.std(ar)] + cal_cost(counterfactual_ar, X_recourse) + cal_cost(counterfactual_ar, X_recourse, 'l2')
     validity['DiRRAc-NM'] = [np.mean(drra_nm_m1), np.std(drra_nm_m1)] + [np.mean(drra_nm), np.std(drra_nm)] + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_nm[:, :-1], X_recourse, 'l2')
     validity['DiRRAc-GM'] = [np.mean(drra_gm_m1), np.std(drra_gm_m1)] + [np.mean(drra_gm), np.std(drra_gm)] + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse) + cal_cost(counterfactual_drra_gm[:, :-1], X_recourse, 'l2')
-    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar[:, :-1], X_recourse) + cal_cost(counterfactual_roar[:, :-1], X_recourse, 'l2')
-    validity['Wachter'] = [np.mean(wachter_m1), np.std(wachter_m1)] + [np.mean(wachter), np.std(wachter)] + cal_cost(counterfactual_wachter[:, :-1], X_recourse) + cal_cost(counterfactual_wachter[:, :-1], X_recourse, 'l2')
+    validity['ROAR'] = [np.mean(roar_m1), np.std(roar_m1)] + [np.mean(roar), np.std(roar)] + cal_cost(counterfactual_roar, X_recourse) + cal_cost(counterfactual_roar, X_recourse, 'l2')
+    validity['Wachter'] = [np.mean(wachter_m1), np.std(wachter_m1)] + [np.mean(wachter), np.std(wachter)] + cal_cost(counterfactual_wachter, X_recourse) + cal_cost(counterfactual_wachter, X_recourse, 'l2')
 
     return validity
 

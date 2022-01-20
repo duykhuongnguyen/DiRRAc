@@ -41,21 +41,21 @@ def main(args):
     val_m1_tex, val_tex, l1_tex, l2_tex = [], [], [], []
 
     # Generate counterfactual and evaluate
-    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples, sigma_identity=args.sigma_identity) if args.mode == 'linear' else utils.train_non_linear_ver2('german', num_samples=args.num_samples)
+    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear_ver2('german', num_samples=args.num_samples)
     post = post_process(german_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples, sigma_identity=args.sigma_identity) if args.mode == 'linear' else utils.train_non_linear_ver2('sba', num_samples=args.num_samples)
+    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear_ver2('sba', num_samples=args.num_samples)
     post = post_process(sba_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples, sigma_identity=args.sigma_identity) if args.mode == 'linear' else utils.train_non_linear_ver2('student', num_samples=args.num_samples)
+    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear_ver2('student', num_samples=args.num_samples)
     post = post_process(student_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='linear')
     parser.add_argument('--num_samples', type=int, default=10)
-    parser.add_argument('--actionable', type=bool, default=False)
+    parser.add_argument('--action', type=bool, default=False)
     parser.add_argument('--sigma_identity', type=bool, default=False)
     parser.add_argument('--save_dir', type=str, default='validity')
     args = parser.parse_args()

@@ -56,13 +56,13 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # Initialize modules
     beta = 0
-    delta = 1.8 if dataset_string == 'german' else 0.5
+    delta = 1.8 if dataset_string == 'german' else 0.6
     k = 1
     p = np.array([1])
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
-    theta, sigma = train_theta(pad_ones(X_train), y_train, 5)
+    theta, sigma = train_theta(pad_ones(X_train), y_train, 100)
 
     if sigma_identity:
         sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
@@ -77,8 +77,8 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding)
 
     ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, alpha=0.5, max_iter=10)
-    wachter = Wachter(X_recourse, model_trained, decision_threshold=0.6, max_iter=1000, linear=True)
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, lmbda=1e-3, alpha=0.5, max_iter=1000)
+    wachter = Wachter(X_recourse, model_trained, decision_threshold=0.5, max_iter=1000, linear=True)
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-NM': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc-GM': [0, 0, 0, 0, 0, 0, 0, 0]}
 
@@ -166,7 +166,7 @@ def train_non_linear_ver2(dataset_string, num_samples, real_data=True, padding=T
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
         ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-        roar = ROAR(X_recourse, coef.squeeze(), intercept, 1e-6, sigma_max=0.1, alpha=0.5, dist_type='l1', max_iter=30)
+        roar = ROAR(X_recourse, coef.squeeze(), intercept, 1e-6, sigma_max=0.1, alpha=0.5, dist_type=1, max_iter=30)
         wachter = Wachter(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, 1e-3, alpha=0.1, dist_type='l1', max_iter=100)
 
 

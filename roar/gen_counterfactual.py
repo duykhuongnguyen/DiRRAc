@@ -86,7 +86,7 @@ class ROAR(object):
         loss_diff = 1.0
         min_loss = float('inf')
         num_stable_iter = 0
-        max_stable_iter = 5
+        max_stable_iter = 20
 
         for it in range(self.max_iter):
             if x_t.grad is not None:
@@ -109,8 +109,8 @@ class ROAR(object):
             with torch.no_grad():
                 x_t -= alpha * x_t.grad
 
-            loss_diff = min_loss - loss.data.item()
-            if loss_diff <= 1e-4:
+            loss_diff = abs(min_loss - loss.data.item())
+            if loss_diff <= 1e-6:
                 num_stable_iter += 1
                 if (num_stable_iter >= max_stable_iter):
                     break

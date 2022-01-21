@@ -16,7 +16,8 @@ from utils import pad_ones, train_theta
 model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', 'german')
 theta, sigma = train_theta(pad_ones(X_train), y_train, 5)
 
-wachter = Wachter(X_test, model_trained, linear=True)
+model = {'coef_': model_trained.coef_, 'intercept_': model_trained.intercept_}
+wachter = Wachter(X_test, model, linear=True)
 roar = ROAR(X_test, model_trained.coef_.squeeze(), model_trained.intercept_, max_iter=50)
 recourse = roar.fit_instance(X_test[0])
 print(recourse)

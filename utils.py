@@ -166,8 +166,8 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
         drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding)
 
         ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-        roar = ROAR(X_recourse, theta[:, :-1], theta[0][-1], 1e-6, lmbda=1e-3, alpha=0.5, max_iter=1000)
-        wachter = Wachter(X_recourse, mlp)
+        roar = ROAR(X_recourse, theta[:, :-1], theta[0][-1], lmbda=1e-3, alpha=0.5, max_iter=1000)
+        wachter = Wachter(X_recourse, mlp, max_iter=1000, linear=False)
 
         # Generate counterfactual
         print("Generate counterfactual for DiDRAc-NM")

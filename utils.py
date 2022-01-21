@@ -175,11 +175,11 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
         if mlp.predict_proba(counterfactual_drra_nm[:-1].reshape(1, -1))[:, 1] < 0.5:
             continue
         X_recourse_.append(X_recourse[i])
-        counterfactual_drra_nm_l[i] = counterfactual_drra_nm
+        # counterfactual_drra_nm_l[i] = counterfactual_drra_nm
         counterfactual_drra_nm_l.append(counterfactual_drra_nm)
         print("Generate counterfactual for DiDRAc-GM")
         counterfactual_drra_gm = drra_module.fit_instance(pad_ones(X_recourse[i], ax=0), model='gm')
-        counterfactual_drra_gm_l[i] = counterfactual_drra_gm
+        # counterfactual_drra_gm_l[i] = counterfactual_drra_gm
         counterfactual_drra_gm_l.append(counterfactual_drra_gm)
         print("Generate counterfactual for AR")
         counterfactual_ar = ar_module.fit_instance(X_recourse[i])

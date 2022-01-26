@@ -12,7 +12,7 @@ from torch import optim
 
 
 def mlp_classifier(X, y, random_state=None, save=False, save_dir=None):
-    clf = MLPClassifier(hidden_layer_sizes=(64, 64, 64), random_state=random_state, max_iter=100, alpha=0.1)
+    clf = MLPClassifier(hidden_layer_sizes=(64, 64, 64), random_state=random_state, max_iter=1000, alpha=0)
     clf.fit(X, y)
 
     if save and save_dir:
@@ -25,10 +25,10 @@ def mlp_classifier(X, y, random_state=None, save=False, save_dir=None):
 class MLP(nn.Module):
     def __init__(self, n):
         super(MLP, self).__init__()
-        self.fc1 = nn.Linear(n, 20)
-        self.fc2 = nn.Linear(20, 50)
-        self.fc3 = nn.Linear(50, 20)
-        self.out = nn.Linear(20, 1)
+        self.fc1 = nn.Linear(n, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.out = nn.Linear(64, 1)
 
         for p in self.parameters():
             if len(p.shape) > 1:

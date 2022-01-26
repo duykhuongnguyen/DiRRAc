@@ -47,7 +47,7 @@ class Wachter(object):
         it = 0
         while f_x <= self.decision_threshold and it < self.max_iter:
             optimizer.zero_grad()
-            f_x = self.model(x_t).squeeze() if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
+            f_x = self.model(x_t) if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
 
             cost = torch.dist(x_t, x_0, self.dist_type)
             f_loss = loss_fn(f_x, y_target)

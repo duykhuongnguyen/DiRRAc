@@ -62,6 +62,10 @@ def main(args):
     l1_tex += post[2]
     l2_tex += post[3]
 
+    print("german_validity: ", german_validity)
+    print("sba_validity: ", sba_validity)
+    print("student_validity: ", student_validity)
+
     df['val_m1'] = val_m1_tex
     df['val'] = val_tex
     df['l1'] = l1_tex
@@ -71,10 +75,6 @@ def main(args):
     if not os.path.exists('result/real_data'):
         os.makedirs('result/real_data')
     df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_{args.mode}.csv', index=False)
-
-    print("german_validity: ", german_validity)
-    print("sba_validity: ", sba_validity)
-    print("student_validity: ", student_validity)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # Distributionally Robust Recourse Action (DiRRAc)
 
-Source-code submission for paper Distributionally Robust Recourse Action - ICLR 2022
+Source-code submission for paper Distributionally Robust Recourse Action (DiRRAc) - ICML 2022
 
 ## 1. Install requirements
 ```
@@ -9,19 +9,19 @@ pip install -r requirements.txt
 
 ## 2. Experiments with synthetic data:
 
-1. [Figure2](figure2.ipynb)
+1. Feasible set of DiRRAc: [Figure2](figure2.ipynb)
 
-2. [Figure3](figure3.ipynb)
+2. Comparison of DiRRAc and ROAR: [Figure3](figure3.ipynb)
 
-3. [Figure4](figure4.ipynb)
+3. Impact of magnitude of distribution shifts to the empirical validity: [Figure4](figure4.ipynb)
 
-4. [Figure5](figure5.ipynb)
+4. Different types of data distribution shifts: [Figure5](figure5.ipynb)
 
-5. [Figure6](figure6.ipynb)
+5. Model parameters in 2D: [Figure6](figure6.ipynb)
 
-6. [Figure7](figure7.ipynb)
+6. Impact of varying parameters of DiRRAc: [Figure7](figure7.ipynb)
 
-7. [Figure9](figure9.ipynb)
+7. Cost of Robustness of DiRRAc: [Figure9](figure9.ipynb)
 
 Results of each figure are saved in result/
 
@@ -38,7 +38,7 @@ Example:
 python train_real_data.py --mode linear --num_samples 40
 ```
 
-Experiments using $\covsa_1=0.1 * I$:
+Experiments with prior on the covariance matrix:
 
 ```
 python train_real_data.py --mode linear --num_samples <number of samples to evaluate> --sigma_identity True

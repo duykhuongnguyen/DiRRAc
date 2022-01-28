@@ -1,0 +1,10 @@
+data,mt,val_m1,val,l1,l2
+German Credit,AR,0.64 $\pm$ 0.20,0.48 $\pm$ 0.04,1.23 $\pm$ 0.52,0.94 $\pm$ 0.41
+,DiRRAc,1.00 $\pm$ 0.00,\textbf{0.80} $\pm$ 0.06,1.82 $\pm$ 0.38,0.98 $\pm$ 0.17
+,Gaussian DiRRAc,\textbf{1.00}$\pm$ 0.00,0.79 $\pm$ 0.08,\textbf{0.79} $\pm$ 0.52,\textbf{0.75} $\pm$ 0.44
+SBA,AR,0.21 $\pm$ 0.16,0.38 $\pm$ 0.08,3.33 $\pm$ 1.88,1.60 $\pm$ 0.63
+,DiRRAc,\textbf{1.00}$\pm$ 0.00,\textbf{1.00}$\pm$ 0.00,1.17 $\pm$ 0.45,0.85 $\pm$ 0.32
+,Gaussian DiRRAc,1.00 $\pm$ 0.00,1.00 $\pm$ 0.00,\textbf{1.16} $\pm$ 0.46,\textbf{0.84} $\pm$ 0.33
+Student Performance,AR,0.44 $\pm$ 0.07,0.43 $\pm$ 0.14,1.69 $\pm$ 1.21,1.10 $\pm$ 0.59
+,DiRRAc,\textbf{1.00}$\pm$ 0.00,\textbf{0.99}$\pm$ 0.02,\textbf{0.78} $\pm$ 0.20,\textbf{0.71} $\pm$ 0.24
+,Gaussian DiRRAc,1.00 $\pm$ 0.00,0.98 $\pm$ 0.02,0.78 $\pm$ 0.20,0.78 $\pm$ 0.20

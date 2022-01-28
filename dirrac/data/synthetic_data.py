@@ -1,7 +1,7 @@
 import numpy as np
 
 
-np.random.seed(0)
+rng = np.random.default_rng(seed=12)
 
 
 class DataSynthesizer(object):
@@ -38,8 +38,8 @@ class DataSynthesizer(object):
             X: features
             y: labels
         """
-        x_0 = np.random.multivariate_normal(mean_0, cov_0, self.n // 2)
-        x_1 = np.random.multivariate_normal(mean_1, cov_1, self.n // 2)
+        x_0 = rng.multivariate_normal(mean_0, cov_0, self.n // 2)
+        x_1 = rng.multivariate_normal(mean_1, cov_1, self.n // 2)
         X = np.concatenate((x_0, x_1))
 
         y = np.concatenate((np.zeros(self.n // 2), np.ones(self.n // 2)))

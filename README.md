@@ -19,7 +19,7 @@ pip install -r requirements.txt
 
 5. [Figure6](figure6.ipynb)
 
-6. [Figure8](figure8.ipynb)
+6. [Figure7](figure7.ipynb)
 
 7. [Figure9](figure9.ipynb)
 

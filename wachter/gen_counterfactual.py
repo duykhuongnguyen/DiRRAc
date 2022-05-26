@@ -11,7 +11,7 @@ from torch.autograd import Variable
 class Wachter(object):
     """ Class for generate recourse for framework: Wachter """
 
-    def __init__(self, data, model, lmbda=0.1, lr=0.01, dist_type=1, max_iter=1000, decision_threshold=0.5, linear=False):
+    def __init__(self, data, model, lmbda=0.1, lr=0.01, dist_type=1, max_iter=1000, decision_threshold=0.5, linear=False, encoding_constraints=False, cat_indices=0):
         """ Parameters
 
         Args:
@@ -33,13 +33,16 @@ class Wachter(object):
         self.max_iter = max_iter
         self.decision_threshold = decision_threshold
         self.linear = linear
+        self.encoding_constraints = encoding_constraints
+        self.cat_indices = np.array(cat_indices).flatten()
 
     def fit_instance(self, x_0):
         x_0 = torch.from_numpy(x_0.copy()).float()
         x_t = Variable(x_0.clone(), requires_grad=True)
+        x_enc = reconstruct_encoding_constraints(x_t, self.cat_indices)
         y_target = torch.tensor([1]).float()
         lmbda = torch.tensor(self.lmbda).float()
-        f_x = self.model(x_t) if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
+        f_x = self.model(x_enc) if not self.linear else torch.sigmoid(torch.dot(x_enc, self.coef) + self.intercept)
 
         loss_fn = torch.nn.BCELoss()
         optimizer = optim.Adam([x_t], self.lr, amsgrad=True)
@@ -47,9 +50,15 @@ class Wachter(object):
         it = 0
         while f_x <= self.decision_threshold and it < self.max_iter:
             optimizer.zero_grad()
-            f_x = self.model(x_t) if not self.linear else torch.sigmoid(torch.dot(x_t, self.coef) + self.intercept)
 
-            cost = torch.dist(x_t, x_0, self.dist_type)
+            if self.encoding_constraints:
+                x_enc = reconstruct_encoding_constraints(x_t, self.cat_indices)
+            else:
+                x_enc = x_t.clone()
+
+            f_x = self.model(x_enc) if not self.linear else torch.sigmoid(torch.dot(x_enc, self.coef) + self.intercept)
+
+            cost = torch.dist(x_enc, x_0, self.dist_type)
             f_loss = loss_fn(f_x, y_target)
 
             loss = f_loss + lmbda * cost
@@ -57,7 +66,7 @@ class Wachter(object):
             optimizer.step()
             it += 1
 
-        return x_t.cpu().detach().numpy().squeeze()
+        return x_enc.cpu().detach().numpy().squeeze()
 
     def fit_data(self, data):
         """ Fit linear recourse action with all instances
@@ -75,3 +84,10 @@ class Wachter(object):
             counterfactual_samples[i] = self.fit_instance(data[i])
 
         return counterfactual_samples
+
+
+def reconstruct_encoding_constraints(x, cat_pos):
+    x_enc = x.clone()
+    for pos in cat_pos:
+        x_enc.data[pos] = torch.clamp(torch.round(x_enc[pos]), 0, 1)
+    return x_enc

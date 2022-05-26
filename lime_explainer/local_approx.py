@@ -22,5 +22,5 @@ class LocalApprox(object):
 
         w = np.array([e[1] for e in coefs])
         b = -shift - np.dot(w, x_0)
-        
+
         return w, np.array(b).reshape(1,)

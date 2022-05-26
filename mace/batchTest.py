@@ -190,9 +190,9 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
           X_test_pred_labels = model_trained.predict(X_test)
           X_test_pred_labels0 = X_test[X_test_pred_labels == 0]
           dim = X_test.shape[1]
-          if dataset_string != 'synthetic':
-            model_trained.coef_ = theta_hat
-            model_trained.intercept_ = bias
+          # if dataset_string != 'synthetic':
+          #   model_trained.coef_ = theta_hat
+          #   model_trained.intercept_ = bias
 
           all_pred_data_df = X_test
           # IMPORTANT: note that 'y' is actually 'pred_y', not 'true_y'
@@ -225,7 +225,8 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
           explanation_counter = 1
           all_minimum_distances = {}
 
-          counterfactual_samples = np.zeros((len(iterate_over_data_dict), dim))
+          # counterfactual_samples = np.zeros((len(iterate_over_data_dict), dim))
+          counterfactual_samples, idx_l = [], []
           count = 0
           for i, (factual_sample_index, factual_sample) in enumerate(iterate_over_data_dict.items()):
             factual_sample['y'] = bool(factual_sample['y'])
@@ -238,8 +239,8 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
             explanation_counter = explanation_counter + 1
             explanation_file_name = f'{explanation_folder_name}/sample_{factual_sample_index}.txt'
 
-            try:
-                explanation_object = generateExplanations(
+            # try:
+            explanation_object = generateExplanations(
                     approach_string,
                     explanation_file_name,
                     model_trained,
@@ -249,13 +250,19 @@ def runExperiments(dataset_values, model_class_values, norm_values, approaches_v
                     observable_data_dict, # used solely for minimum_observable method
                 standard_deviations, # used solely for feature_tweaking method
                 )
-                counterfactual_samples[count] = explanation_object['counterfactual']
-            except:
-                counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
+            if len(explanation_object['counterfactual']) != 0:
+                idx_l.append(i)
+                counterfactual_samples.append(explanation_object['counterfactual'])
+                # counterfactual_samples[count] = explanation_object['counterfactual']
+            # except:
+                # continue
+                # counterfactual_samples[count] = np.zeros((1, counterfactual_samples.shape[1]))
                 # counterfactual_samples[count] = X_test_pred_labels0.to_numpy()[i]
-            count += 1
+                count += 1
+          print(count)
+          counterfactual_samples = np.array(counterfactual_samples)
 
-          return counterfactual_samples
+          return counterfactual_samples, np.array(idx_l)
 
 if __name__ == '__main__':
 

@@ -752,15 +752,35 @@ def loadDataset(dataset_name, return_one_hot, load_from_cache = False, debug_fla
         attr_type = 'categorical'                                                                      
         actionability = 'any'                                                                          
         mutability = True                                                                              
-      elif col_name == 'Duration':                                                                     
+      elif col_name == 'LoanDuration':                                                                     
         attr_type = 'numeric-int' # 'numeric-real'                                                     
-        actionability = 'any'                                                                          
+        actionability = 'none'                                                                          
+        mutability = True
+      elif col_name == 'Duration':            
+
+        attr_type = 'numeric-int' # 'numeric-real'
+
+        actionability = 'any'                    
+
+        mutability = True
+                
+      elif col_name == 'Sex':            
+
+        attr_type = 'binary' # 'numeric-real'
+
+        actionability = 'any'                    
+
         mutability = True
       elif col_name == 'History':          
         attr_type = 'categorical'          
         actionability = 'any'              
-        mutability = True                  
-      elif col_name == 'Credit amount':    
+        mutability = True   
+      elif col_name == 'Credit amount':
+        attr_type = 'numeric-real'
+        # actionability = 'none'  
+        actionability = 'any'
+        mutability = True
+      elif col_name == 'Credit':    
         attr_type = 'numeric-real'         
         # actionability = 'none'           
         actionability = 'any'              
@@ -777,8 +797,8 @@ def loadDataset(dataset_name, return_one_hot, load_from_cache = False, debug_fla
         mutability = True                  
       elif col_name == 'Age':              
         attr_type = 'numeric-int'          
-        # actionability = 'none'           
-        actionability = 'any'              
+        actionability = 'same-or-increase'           
+        # actionability = 'any'              
         mutability = True                  
       elif col_name == 'Existing credits': 
         attr_type = 'numeric-int'          
@@ -854,11 +874,11 @@ def loadDataset(dataset_name, return_one_hot, load_from_cache = False, debug_fla
         actionability = 'any'                                                                          
         mutability = True
       elif col_name == 'NoEmp':                                                                     
-        attr_type = 'numeric-int' # 'numeric-real'                                                     
+        attr_type = 'numeric-real'                                                     
         actionability = 'any'                                                                          
         mutability = True
       elif col_name == 'CreateJob':                                                                     
-        attr_type = 'numeric-int' # 'numeric-real'                                                     
+        attr_type = 'numeric-real'                                                     
         actionability = 'any'                                                                          
         mutability = True
       elif col_name == 'RetainedJob':                                                                     
@@ -944,7 +964,7 @@ def loadDataset(dataset_name, return_one_hot, load_from_cache = False, debug_fla
         actionability = 'any'                                                                          
         mutability = True
       elif col_name == 'absences':                                                                     
-        attr_type = 'numeric-int' # 'numeric-real'                                                     
+        attr_type = 'numeric-real'                                                     
         actionability = 'any'                                                                          
         mutability = True
       elif col_name == 'G1':                                                                     

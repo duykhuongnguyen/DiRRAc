@@ -9,6 +9,7 @@ from pysmt.shortcuts import *
 from pysmt.typing import *
 
 def getGermanCausalConsistencyConstraints(model_symbols, factual_sample):
+  print(model_symbols)
   # Gender (no parents)
   g = Ite(
     Not( # if YES intervened

@@ -838,9 +838,11 @@ def genExp(
     }
   elif 'mint' in approach_string:
     action_set = {}
-    for attr_name_kurz in dataset_obj.getInputAttributeNames('kurz'):
-      if factual_sample[attr_name_kurz] != closest_interventional_sample['interventional_sample'][attr_name_kurz]:
-        action_set[attr_name_kurz] = closest_interventional_sample['interventional_sample'][attr_name_kurz]
+    # for attr_name_kurz in dataset_obj.getInputAttributeNames('kurz'):
+      # if factual_sample[attr_name_kurz] != closest_interventional_sample['interventional_sample'][attr_name_kurz]:
+        # action_set[attr_name_kurz] = closest_interventional_sample['interventional_sample'][attr_name_kurz]
+    counterfactual_sample = np.array(list(closest_interventional_sample['counterfactual_sample'].values())[1:])
+      
     return {
       'fac_sample': factual_sample,
       'scf_found': True,
@@ -851,6 +853,7 @@ def genExp(
       # 'int_sample': closest_interventional_sample['interventional_sample'],
       # 'int_distance': closest_interventional_sample['interventional_distance'],
       # 'action_set': action_set,
+      'counterfactual': counterfactual_sample,
       'int_set': action_set,
       'int_cost': closest_interventional_sample['interventional_distance'],
       # 'all_counterfactuals': all_counterfactuals

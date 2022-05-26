@@ -49,6 +49,7 @@ def load_german_data():
   processed_df = processed_df.dropna() # drop all rows that include NAN (some exist in isMarried column, possibly elsewhere as well)
   processed_df.to_csv(processed_file, header = True, index = False)
   assert(processed_df.shape[0] == 1000)
+  print(processed_df)
 
   return processed_df.astype('float64')
 
@@ -61,10 +62,12 @@ def load_german_data_(shift=False):
     df = pd.read_csv(read_file)                                                                          
     # df['History'] += 1                                                                                   
     # df['Status'] += 1
-                                                                                                         
+    #  df = df.drop(columns=['Status'])
     return df.astype('float64')                                                                          
 
-
+if __name__ == '__main__':
+    load_german_data()
+    load_german_data_(shift=True)
 
 
 # import numpy as np

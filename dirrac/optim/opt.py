@@ -4,13 +4,15 @@ from autograd import value_and_grad
 
 from autograd.scipy.stats import norm
 
+import torch
+
 import gurobipy as grb
 
 
 class Optimization(object):
     """ Class for optimization problem """
 
-    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, num_discrete=None, padding=False, immutable_l=None, non_icr_l=None):
+    def __init__(self, delta_add, K, dim, p, theta, sigma, rho, lmbda, zeta, dist_type='l2', gaussian=False, model_type='mixture', real_data=False, num_discrete=None, padding=False, immutable_l=None, non_icr_l=None, cat_indices=None):
         self.delta_add = delta_add
         self.K = K
         self.dim = dim
@@ -28,6 +30,7 @@ class Optimization(object):
         self.padding = padding
         self.immutable_l = immutable_l
         self.non_icr_l = non_icr_l
+        self.cat_indices = cat_indices
 
         self.df_autograd = value_and_grad(self.f_moments_infor) if not gaussian else value_and_grad(self.f_gaussian)
 
@@ -48,6 +51,8 @@ class Optimization(object):
         x_sub_0 = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="xsub0")
         x_norm = model.addMVar(1, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="x_norm")
         x_sub_0_abs = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="xsub0abs")
+        if self.cat_indices:
+            z_indices = [model.addMVar(len(self.cat_indices[i]), lb=0, ub=1, vtype=grb.GRB.BINARY, name=f"z_bin_{i}") for i in range(len(self.cat_indices))]
 
         # Set objective
         if self.dist_type == 'l2':
@@ -64,10 +69,11 @@ class Optimization(object):
         model.addConstr(x_norm @ x_norm == x @ x)
         model.addConstr(x_norm >= 0)
 
-        # If x is real data it need to be greater than 0 and less than or equal to 1
+        # If x is real data
         if self.real_data:
-            model.addConstr(x >= 0)
-            model.addConstr(x[self.num_discrete:] <= 1)
+            if self.cat_indices:
+                for i in range(len(self.cat_indices)):
+                    model.addConstr(z_indices[i] == x[self.cat_indices[i][0]:self.cat_indices[i][-1] + 1])
 
         if self.padding:
              model.addConstr(x[self.dim - 1] == 1)
@@ -75,8 +81,6 @@ class Optimization(object):
         if self.dist_type == 'l1':
             for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
                 model.addConstr(w == grb.abs_(v))
-            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            # model.addConstr(x_sub_0_abs >= 0)
 
         # Add actionability constraints
         if self.immutable_l:
@@ -97,6 +101,7 @@ class Optimization(object):
 
         for i in range(self.dim):
             x_opt[i] = x[i].x
+        
         delta_min = np.linalg.norm(x_opt - x_0) if self.dist_type == 'l2' else np.linalg.norm(x_opt - x_0, ord=1)
 
         return delta_min
@@ -178,6 +183,8 @@ class Optimization(object):
         x_sub_0 = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="xsub0")
         x_norm = model.addMVar(1, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="x_norm")
         x_sub_0_abs = model.addMVar(self.dim, lb=float('-inf'), ub=float('inf'), vtype=grb.GRB.CONTINUOUS, name="xsub0abs")
+        if self.cat_indices:
+            z_indices = [model.addMVar(len(self.cat_indices[i]), lb=0, ub=1, vtype=grb.GRB.BINARY, name=f"z_bin_{i}") for i in range(len(self.cat_indices))]
 
         # Set objective
         obj = x_sub_comma @ x_sub_comma if not check_feasible else 0
@@ -189,10 +196,11 @@ class Optimization(object):
         model.addConstr(x_norm @ x_norm == x @ x)
         model.addConstr(x_norm >= 0)
 
-        # If x is real data it need to be greater than 0 and less than or equal to 1
+        # If x is real data
         if self.real_data:
-            model.addConstr(x >= 0)
-            model.addConstr(x[self.num_discrete:] <= 1)
+            if self.cat_indices:
+                for i in range(len(self.cat_indices)):
+                    model.addConstr(z_indices[i] == x[self.cat_indices[i][0]:self.cat_indices[i][-1] + 1])
 
         if self.padding:
             model.addConstr(x[self.dim - 1] == 1)
@@ -205,12 +213,10 @@ class Optimization(object):
         if self.non_icr_l:
             for i in range(len(self.non_icr_l)):
                 model.addConstr(x[self.non_icr_l[i]] >= x_0[self.non_icr_l[i]])
-
+        
         if self.dist_type == 'l1':
             for w, v in zip(x_sub_0_abs.tolist(), x_sub_0.tolist()):
                 model.addConstr(w == grb.abs_(v))
-            # model.addConstr(x_sub_0 @ x_sub_0 == x_sub_0_abs @ x_sub_0_abs)
-            # model.addConstr(x_sub_0_abs >= 0)
             model.addConstr(sum(x_sub_0_abs) <= delta)
         else:
             model.addConstr(x_sub_0 @ x_sub_0 <= delta * delta)     # Constrant 1
@@ -257,11 +263,7 @@ class Optimization(object):
 
     def recourse_action(self, x_0, max_iter):
         """ Full process of recource action """
-        try:
-            delta_min = self.find_delta_min(x_0)
-        except:
-            print("No solution for delta")
-            return
+        delta_min = self.find_delta_min(x_0)
 
         delta = delta_min + self.delta_add
         # Check if feasible set is non-empty

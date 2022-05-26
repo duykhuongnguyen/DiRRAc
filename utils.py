@@ -1,5 +1,8 @@
+import time
+from copy import deepcopy
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.mixture import GaussianMixture
 
 import torch
 
@@ -12,6 +15,7 @@ from ar.gen_counterfactual import LinearAR
 from roar.gen_counterfactual import ROAR
 from wachter.gen_counterfactual import Wachter
 from lime_explainer.local_approx import LocalApprox
+from mace.batchTest import runExperiments
 
 
 np.random.seed(0)
@@ -25,7 +29,7 @@ def pad_ones(data, ax=1):
     return pad_data
 
 
-def train_theta(X, y, num_shuffle):
+def train_theta(X, y, num_shuffle, n_components=1):
     dim = X.shape[1]
     all_coef = np.zeros((num_shuffle, dim))
     for i in range(num_shuffle):
@@ -33,11 +37,16 @@ def train_theta(X, y, num_shuffle):
         coef = logistic_classifier(X_train, y_train)[1].T
         all_coef[i] = np.squeeze(coef)
 
-    theta = np.zeros((1, dim))
-    sigma = np.zeros((1, dim, dim))
-    theta[0], sigma[0] = np.mean(all_coef, axis=0), np.cov(all_coef.T)
+    if n_components == 1:
+        theta = np.zeros((1, dim))
+        sigma = np.zeros((1, dim, dim))
+        theta[0], sigma[0] = np.mean(all_coef, axis=0), np.cov(all_coef.T)
 
-    return theta, sigma
+        return theta, sigma, np.array([1])
+
+    gm = GaussianMixture(n_components=n_components, random_state=0).fit(all_coef)
+    
+    return gm.means_, gm.covariances_, gm.weights_
 
 
 def cal_cost(samples, counterfactual_samples, type_cost='l1'):
@@ -52,7 +61,7 @@ def cal_validity(pred):
     return sum(pred == 1) / len(pred)
 
 
-def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True, sigma_identity=False, actionable=False):
+def train_real_world_data(dataset_string, num_samples, real_data=True, padding=True, sigma_identity=False, actionable=False, n_components=1):
     # Load data
     model_trained, X_train, y_train, X_test, y_test, X_shift, y_shift = loadModelForDataset('lr', dataset_string)
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
@@ -60,55 +69,67 @@ def train_real_world_data(dataset_string, num_samples, real_data=True, padding=T
 
     # Initialize modules
     beta = 0
-    # delta = 1.8 if dataset_string == 'german' else 0.6
-    delta = 0.5
-    k = 1
-    p = np.array([1])
-    rho = np.array([0])
+    delta = 3.0 # if dataset_string == 'german' else 0.6
+    # delta = 0.6
+    k = n_components
+    rho = np.array([0 for i in range(k)])
     lmbda = 0.7
     zeta = 1
-    theta, sigma = train_theta(pad_ones(X_train), y_train, 100)
+    theta, sigma, p = train_theta(pad_ones(X_train), y_train, 100, k)
 
+    # Run experiments with sigma identity
     if sigma_identity:
+        theta[0, :] = np.concatenate([model_trained.coef_.squeeze(), model_trained.intercept_])
         sigma[0, :, :] = 0.1 * np.identity(sigma.shape[1])
-        delta = 1.5
+        delta = 3.0
 
+    # Cat indices
+    cat_indices = {'german': [[4, 5, 6, 7]], 'sba': [[8, 9, 10], [11, 12], [13, 14], [15, 16], [17, 18]], 'student': [[4, 5, 6, 7], [8, 9], [10, 11], [12, 13], [14, 15, 16, 17, 18]]}
+    num_discrete = {'german': 4, 'sba': 8, 'student': 4}
+
+    # Initialize modules
+    ar_module = LinearAR(X_train, model_trained.coef_.squeeze(), model_trained.intercept_, encoding_constraints=True, dis_indices=num_discrete[dataset_string])
+    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, lmbda=1e-3, alpha=0.5, max_iter=100, encoding_constraints=True, cat_indices=cat_indices[dataset_string])
+    wachter = Wachter(X_recourse, model_trained, decision_threshold=0.5, max_iter=1000, linear=True, encoding_constraints=True, cat_indices=cat_indices[dataset_string])
+
+    # Add actionability constraints
     if actionable:
-        num_discrete = {'german': 3, 'sba': 8, 'student': 4}
-        immutable_d = {'german': [2], 'sba': [X_train.shape[1] - 2, X_train.shape[1] - 1, X_train.shape[1] - 7, X_train.shape[1] - 8, X_train.shape[1] - 9], 'student': [10, 11]}
-        non_icr_d = {'german': [3], 'sba': None, 'student': [0, 1]}
-        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l2', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding, immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string])
+        immutable_d = {'german': [2], 'sba': [X_train.shape[1] - 2, X_train.shape[1] - 1, X_train.shape[1] - 7, X_train.shape[1] - 8, X_train.shape[1] - 9], 'student': [8, 9, 10, 11]}
+        non_icr_d = {'german': [0, 3], 'sba': [4], 'student': [0, 1, 2, 3]}
+        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, num_discrete=num_discrete[dataset_string], padding=padding, immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string], cat_indices=cat_indices[dataset_string])
+        ar_module = LinearAR(X_train, model_trained.coef_.squeeze(), model_trained.intercept_, encoding_constraints=True, dis_indices=num_discrete[dataset_string], immutable_l=immutable_d[dataset_string], non_icr_l=non_icr_d[dataset_string])
     else:
-        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l2', real_data=real_data, padding=padding)
-
-    ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-    roar = ROAR(X_recourse, model_trained.coef_.squeeze(), model_trained.intercept_, lmbda=1e-3, alpha=0.5, max_iter=1000)
-    wachter = Wachter(X_recourse, model_trained, decision_threshold=0.5, max_iter=1000, linear=True)
+        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding, cat_indices=cat_indices[dataset_string])
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc': [0, 0, 0, 0, 0, 0, 0, 0], 'Gaussian DiRRAc': [0, 0, 0, 0, 0, 0, 0, 0]}
 
     # Generate counterfactual
     print("Generate counterfactual for DiDRAc-NM")
+    t = time.time()
     counterfactual_drra_nm = drra_module.fit_data(pad_ones(X_recourse))
     print("Generate counterfactual for DiDRAc-GM")
+    t = time.time()
     counterfactual_drra_gm = drra_module.fit_data(pad_ones(X_recourse), model='gm')
     print("Generate counterfactual for AR")
+    t = time.time()
     counterfactual_ar = ar_module.fit_data(X_recourse)
     print("Generate counterfactual for ROAR")
+    t = time.time()
     counterfactual_roar = roar.fit_data(roar.data)
     print("Generate counterfactual for Wachter")
+    t = time.time()
     counterfactual_wachter = wachter.fit_data(wachter.data)
 
-    drra_nm_m1, drra_gm_m1, ar_m1, roar_m1, wachter_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm_m1, drra_gm_m1, ar_m1, ar_hat_m1,  roar_m1, roar_hat_m1, wachter_m1, wachter_hat_m1, mint_m1 = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    
     # Evaluate with with original classifier
-
     drra_nm_m1 = model_trained.predict(counterfactual_drra_nm[:, :-1])
     drra_gm_m1 = model_trained.predict(counterfactual_drra_gm[:, :-1])
     ar_m1 = model_trained.predict(counterfactual_ar)
     roar_m1 = model_trained.predict(counterfactual_roar)
     wachter_m1 = model_trained.predict(counterfactual_wachter)
 
-    drra_nm, drra_gm, ar, roar, wachter = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
+    drra_nm, drra_gm, ar, ar_hat, roar, roar_hat, wachter, wachter_hat, mint = np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100), np.zeros(100)
     # Train model with shifted data
     for i in range(100):
         X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.2, random_state=i+1)
@@ -135,7 +156,6 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     
     # Load model
-    # mlp = train_mlp(X_train, y_train)
     mlp = MLP(X.shape[1])
     mlp.load_state_dict(torch.load(f'result/models_0/{dataset_string}/model.pt'))
 
@@ -147,6 +167,10 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
     
     X_recourse = X_test[mlp.predict(X_test) == 0][:num_samples]
 
+    # Cat indices
+    cat_indices = {'german': [[4, 5, 6, 7]], 'sba': [[8, 9, 10], [11, 12], [13, 14], [15, 16], [17, 18]], 'student': [[4, 5, 6, 7], [8, 9], [10, 11], [12, 13], [14, 15, 16, 17, 18]]}
+    num_discrete = {'german': 4, 'sba': 8, 'student': 4}
+
     # Initialize modules
     beta = 0
     delta = 0.8
@@ -155,7 +179,7 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
     rho = np.array([0])
     lmbda = 0.7
     zeta = 1
-    num_discrete = {'german': 3, 'sba': 8, 'student': 4}
+    num_discrete = {'german': 4, 'sba': 8, 'student': 4}
 
     validity = {'AR': [0, 0, 0, 0, 0, 0, 0, 0], 'Wachter': [0, 0, 0, 0, 0, 0, 0, 0], 'ROAR': [0, 0, 0, 0, 0, 0, 0, 0], 'DiRRAc': [0, 0, 0, 0, 0, 0, 0, 0], 'Gaussian DiRRAc': [0, 0, 0, 0, 0, 0, 0, 0]}
     drra_nm_m1, drra_gm_m1, ar_m1, roar_m1, wachter_m1 = [], [], [], [], []
@@ -176,11 +200,10 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
         theta[0], sigma[0] = np.mean(all_coef, axis=0), np.cov(all_coef.T)
 
         # Initialize modules
-        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding) # , num_discrete=num_discrete[dataset_string])
-
-        ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1])
-        roar = ROAR(X_recourse, theta[:, :-1].squeeze(), torch.tensor([theta[0][-1]]), lmbda=1e-3, alpha=0.2, max_iter=30)
-        wachter = Wachter(X_recourse, mlp, max_iter=1000, linear=False)
+        drra_module = DRRA(delta, k, X_train.shape[1] + 1, p, theta, sigma * (1 + beta), rho, lmbda, zeta, dist_type='l1', real_data=real_data, padding=padding, cat_indices=cat_indices[dataset_string])
+        ar_module = LinearAR(X_train, theta[:, :-1], theta[0][-1], encoding_constraints=True, dis_indices=num_discrete[dataset_string])
+        roar = ROAR(X_recourse, theta[:, :-1].squeeze(), torch.tensor([theta[0][-1]]), lmbda=1e-3, alpha=0.2, max_iter=30, encoding_constraints=True, cat_indices=cat_indices[dataset_string])
+        wachter = Wachter(X_recourse, mlp, max_iter=1000, linear=False, encoding_constraints=True, cat_indices=cat_indices[dataset_string])
 
         # Generate counterfactual
         counterfactual_ar = ar_module.fit_instance(X_recourse[i])
@@ -188,9 +211,6 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
             continue
 
         counterfactual_drra_nm = drra_module.fit_instance(pad_ones(X_recourse[i], ax=0))
-        if mlp.predict_proba(counterfactual_drra_nm[:-1].reshape(1, -1))[:, 1] < 0.5:
-            continue
-
         X_recourse_.append(X_recourse[i])
         print("Generate counterfactual for DiDRAc-NM")
         counterfactual_drra_nm_l.append(counterfactual_drra_nm)
@@ -198,7 +218,7 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
         counterfactual_drra_gm = drra_module.fit_instance(pad_ones(X_recourse[i], ax=0), model='gm')
         counterfactual_drra_gm_l.append(counterfactual_drra_gm)
         print("Generate counterfactual for AR")
-        counterfactual_ar_l.append(counterfactual_ar)
+        counterfactual_ar_l.append(np.squeeze(counterfactual_ar))
         print("Generate counterfactual for ROAR")
         counterfactual_roar = roar.fit_instance(roar.data[i])
         counterfactual_roar_l.append(counterfactual_roar)
@@ -231,7 +251,6 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
         # Train model with shifted data
         for j in range(num_shuffle):
             X_train_shifted, X_test_shifted, y_train_shifted, y_test_shifted = train_test_split(X_shift, y_shift, test_size=0.05, random_state=i+1)
-            # clf_shifted = mlp_classifier(np.concatenate((X_train, X_test_shifted)), np.concatenate((y_train, y_test_shifted)))
             clf_shifted = model_shifted[j]
 
             drra_nm_[j] = clf_shifted.predict(counterfactual_drra_nm[:-1].reshape(1, -1))
@@ -243,7 +262,6 @@ def train_non_linear(dataset_string, num_samples, real_data=True, padding=True, 
             roar_[j] = clf_shifted.predict(counterfactual_roar.reshape(1, -1))
             wachter_[j] = clf_shifted.predict(counterfactual_wachter.reshape(1, -1))
 
-        # drra_nm_m2[i], drra_gm_m2[i], ar_m2[i], roar_m2[i], wachter_m2[i] = np.mean(drra_nm_), np.mean(drra_gm_), np.mean(ar_), np.mean(roar_), np.mean(wachter_)
         drra_nm_m2.append(np.mean(drra_nm_))
         drra_gm_m2.append(np.mean(drra_gm_))
         ar_m2.append(np.mean(ar_))

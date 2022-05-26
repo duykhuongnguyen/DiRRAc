@@ -11,7 +11,7 @@ import gurobipy as grb
 class ROAR(object):
     """ Class for generate recourse for framework: ROAR """
 
-    def __init__(self, data, coef, intercept, lmbda=0.1, delta_min=None, delta_max=0.1, alpha=0.1, dist_type=1, max_iter=20):
+    def __init__(self, data, coef, intercept, lmbda=0.1, delta_min=None, delta_max=0.1, alpha=0.1, dist_type=1, max_iter=20, encoding_constraints=False, cat_indices=0):
         """ Parameters
 
         Args:
@@ -29,6 +29,8 @@ class ROAR(object):
         self.delta_min = delta_min
         self.delta_max = delta_max
         self.max_iter = max_iter
+        self.encoding_constraints = encoding_constraints
+        self.cat_indices = np.array(cat_indices).flatten()
 
     def find_optimal_sigma(self, coef, x):
         """ Find value of sigma at each step
@@ -75,6 +77,7 @@ class ROAR(object):
     def fit_instance(self, x_0):
         x_0 = torch.tensor(x_0.copy()).float()
         x_t = x_0.clone().detach().requires_grad_(True)
+        x_enc = reconstruct_encoding_constraints(x_t, self.cat_indices)
 
         w = torch.from_numpy(self.coef.copy()).float()
         b = torch.tensor(self.intercept).float()
@@ -92,6 +95,11 @@ class ROAR(object):
             if x_t.grad is not None:
                 x_t.grad.data.zero_()
 
+            if self.encoding_constraints:
+                x_enc = reconstruct_encoding_constraints(x_t, self.cat_indices)
+            else:
+                x_enc = x_t.clone()
+
             with torch.no_grad():
                 lar_mul = self.delta_max / torch.sqrt(torch.linalg.norm(x_t) ** 2 + 1)
                 delta_w = - x_t * lar_mul
@@ -99,8 +107,8 @@ class ROAR(object):
                 w_ = w + delta_w
                 b_ = b + delta_b
 
-            f_x = torch.sigmoid(torch.dot(x_t, w_) + b_).float()
-            cost = torch.dist(x_t, x_0, self.dist_type)
+            f_x = torch.sigmoid(torch.dot(x_enc, w_) + b_).float()
+            cost = torch.dist(x_enc, x_0, self.dist_type)
             f_loss = loss_fn(f_x, y_target)
 
             loss = f_loss + lmbda * cost
@@ -137,3 +145,10 @@ class ROAR(object):
             counterfactual_samples[i] = self.fit_instance(data[i])
 
         return counterfactual_samples
+
+
+def reconstruct_encoding_constraints(x, cat_pos):
+    x_enc = x.clone()
+    for pos in cat_pos:
+        x_enc.data[pos] = torch.clamp(torch.round(x_enc[pos]), 0, 1)
+    return x_enc

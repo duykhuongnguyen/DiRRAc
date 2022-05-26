@@ -6,7 +6,13 @@ import pandas as pd
 import utils
 
 
-def post_process(val):
+def post_process(val, time=False):
+    if time:
+        time = []
+        for model_type in val:
+            time.append(round(val[model_type], 3))
+        return time
+
     val_m1_l, val_l, l1_l, l2_l = [], [], [], []
     for model_type in val:
         val_m1_l.append(val[model_type][0])
@@ -38,24 +44,29 @@ def main(args):
     df['data'] = ['German Credit', '', '', '', '', 'SBA', '', '', '', '', 'Student Performance', '', '', '', '']
     df['mt'] = ['AR', 'Wachter', 'ROAR', 'DiRRAc', 'Gaussian DiRRAc'] * 3
 
+    df_time = pd.DataFrame(columns=['data', 'mt', 'time'])
+    df_time['data'] = ['German Credit', '', '', '', '', 'SBA', '', '', '', '', 'Student Performance', '', '', '', '']
+    df_time['mt'] = ['AR', 'Wachter', 'ROAR', 'DiRRAc', 'Gaussian DiRRAc'] * 3
+
     val_m1_tex, val_tex, l1_tex, l2_tex = [], [], [], []
+    time = []
 
     # Generate counterfactual and evaluate
-    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear('german', num_samples=args.num_samples)
+    german_validity = utils.train_real_world_data('german', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action, n_components=args.k, theta_hat_run=args.theta_hat_run) if args.mode == 'linear' else utils.train_non_linear('german', num_samples=args.num_samples)
     post = post_process(german_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear('sba', num_samples=args.num_samples)
+    sba_validity = utils.train_real_world_data('sba', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action, n_components=args.k, theta_hat_run=args.theta_hat_run) if args.mode == 'linear' else utils.train_non_linear('sba', num_samples=args.num_samples)
     post = post_process(sba_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
     l1_tex += post[2]
     l2_tex += post[3]
 
-    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action) if args.mode == 'linear' else utils.train_non_linear('student', num_samples=args.num_samples)
+    student_validity = utils.train_real_world_data('student', num_samples=args.num_samples, sigma_identity=args.sigma_identity, actionable=args.action, n_components=args.k, theta_hat_run=args.theta_hat_run) if args.mode == 'linear' else utils.train_non_linear('student', num_samples=args.num_samples)
     post = post_process(student_validity)
     val_m1_tex += post[0]
     val_tex += post[1]
@@ -75,6 +86,7 @@ def main(args):
     if not os.path.exists('result/real_data'):
         os.makedirs('result/real_data')
     df.to_csv(f'result/real_data/{args.save_dir}_{args.num_samples}_{args.mode}.csv', index=False)
+    df_time.to_csv(f'result/real_data/run_time.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -83,6 +95,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_samples', type=int, default=10)
     parser.add_argument('--action', type=bool, default=False)
     parser.add_argument('--sigma_identity', type=bool, default=False)
+    parser.add_argument('--k', type=int, default=1)
+    parser.add_argument('--theta_hat_run', type=bool, default=False)
     parser.add_argument('--save_dir', type=str, default='validity')
     args = parser.parse_args()
 

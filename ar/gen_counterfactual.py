@@ -8,7 +8,7 @@ import recourse as rs
 class LinearAR(object):
     """ Class for generate counterfactual samples for framework: AR """
 
-    def __init__(self, data, coef, intercept, padding=False):
+    def __init__(self, data, coef, intercept, padding=False, encoding_constraints=True, dis_indices=0, immutable_l=None, non_icr_l=None):
         """ Parameters
 
         Args:
@@ -22,8 +22,23 @@ class LinearAR(object):
         # Action set
         name_l = [str(i) for i in range(self.n_variables)]
         self.action_set = rs.ActionSet(data, names = name_l)
+        
+        if encoding_constraints:
+            for i in range(dis_indices):
+                self.action_set[str(i)].bounds = (float("-inf"), float("inf"))
+
         if padding:
             self.action_set[name_l[-1]].mutable = False
+
+        if immutable_l:
+            for i in immutable_l:
+                self.action_set[str(i)].actionable = False
+
+        if non_icr_l:
+            for i in non_icr_l:
+                self.action_set[str(i)].step_direction = 1
+
+        self.action_set.set_alignment(coefficients=coef, intercept=intercept)
         self.coef = coef
         self.intercept = intercept
 
@@ -37,14 +52,15 @@ class LinearAR(object):
             counterfactual_sample: counterfactual of input x
         """
         try:
-            rb = rs.RecourseBuilder(
+            fs = rs.Flipset(
+                x=x,
+                action_set=self.action_set,
                 coefficients=self.coef,
                 intercept=self.intercept,
-                action_set=self.action_set,
-                x=x
             )
-            output = rb.fit()
-            counterfactual_sample = np.add(x, output['actions'])
+            fs_pop = fs.populate(total_items=1)
+
+            counterfactual_sample = np.add(x, fs_pop.actions)
         except:
             counterfactual_sample = np.zeros(x.shape)
 

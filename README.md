@@ -1,6 +1,6 @@
 # Distributionally Robust Recourse Action (DiRRAc)
 
-Source-code submission for paper Distributionally Robust Recourse Action (DiRRAc) - NeurIPS 2022
+Source-code for paper Distributionally Robust Recourse Action (DiRRAc) (ICLR 2023)
 
 ## 1. Install requirements
 ```
